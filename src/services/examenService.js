@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const baseUrl = 'http://localhost:8081/examenes';
 
-export const examenesService = {
+export const listarExamenesPendientesService = {
     getExamenesPendientes: async () => {
         try {
             const response = await axios.get(`${baseUrl}/listar-pendientes`, {
@@ -60,3 +60,16 @@ export const mostrarResultadosExamenService = {
     },
 };
 
+export const listarExamenesCompletadosService = {
+    getExamenesCompletados: async () => {
+        try {
+            const response = await axios.get(`${baseUrl}/listar-completados`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al obtener los exámenes completados:', error);
+            throw error;
+        }
+    },
+};

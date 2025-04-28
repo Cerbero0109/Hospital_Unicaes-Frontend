@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, InputGroup, FormControl, Row ,Button} from 'react-bootstrap';
 import DataTable from 'react-data-table-component';
-import { examenesService } from 'services/examenService';
+import { listarExamenesPendientesService } from 'services/examenService';
 import Card from '../../components/Card/MainCard';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,7 +15,7 @@ const Examenes = () => {
   useEffect(() => {
     const loadExamenes = async () => {
       try {
-        const data = await examenesService.getExamenesPendientes();
+        const data = await listarExamenesPendientesService.getExamenesPendientes();
         setExamenes(data);
       } catch (error) {
         console.error('Error al cargar exámenes pendientes:', error);
@@ -27,7 +27,7 @@ const Examenes = () => {
     loadExamenes();
   }, []);
 
-  const navigate = useNavigate(); // Add this at the top of your component
+  const navigate = useNavigate(); 
 
   const columns = [
     { name: 'Nombre de Muestra', selector: row => `${row.nombre_muestra}`, sortable: true },
@@ -42,7 +42,7 @@ const Examenes = () => {
           variant="success"
           size="sm"
           className="mt-2 mb-2 ps-3 pe-2"
-          onClick={() => navigate(`/registrar-examen/${row.id_examen}`)} // Use navigate to redirect to the exam registration page
+          onClick={() => navigate(`/registrar-examen/${row.id_examen}`)} 
         >
           <i className="fas fa-pen"></i>
         </Button>
