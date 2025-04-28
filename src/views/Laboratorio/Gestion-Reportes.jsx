@@ -14,7 +14,6 @@ const GestionReportes = () => {
     const cargarExamenes = async () => {
       try {
         const data = await listarExamenesCompletadosService.getExamenesCompletados();
-        console.log('Data recibida:', data); // ✅ para verificar que esté llegando bien
         setExamenes(data);
       } catch (error) {
         console.error('Error al cargar los exámenes completados:', error);
