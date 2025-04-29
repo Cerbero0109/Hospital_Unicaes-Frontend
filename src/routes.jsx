@@ -32,7 +32,7 @@ const routes = [
         exact: true,
         guard: AuthGuard,
         element: lazy(() => import('./views/pacientes_archivo/index_archivo_form')),
-        roles: ['Administrador', 'Médico', 'Enfermero','Laboratorista'] 
+        roles: ['Administrador', 'Médico', 'Enfermero','Laboratorista', 'Farmacia'] 
       },
       {
         //rutas del administrador
