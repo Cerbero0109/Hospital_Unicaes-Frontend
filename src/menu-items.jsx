@@ -131,10 +131,10 @@ const menuItems = {
 
         // VISTA DE FARMACIA
         {
-          id: 'v_pacientes_examenes',
+          id: 'v_inventario_medicamentos',
           title: 'Inventario',
           type: 'item',
-          url: '/pacientes-historial',
+          url: '/inventario-medicamentos', // Esta es la nueva ruta que hemos creado
           classes: 'nav-item',
           icon: 'feather icon-package',
           roles: ['Farmacia'] // Solo el rol Farmacia puede ver esta opción
