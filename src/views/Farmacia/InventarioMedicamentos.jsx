@@ -13,6 +13,7 @@ import VerMedicamentoModal from './components/VerMedicamentoModal';
 import VerLoteModal from './components/VerLoteModal';
 import CategoriasYPresentacionesModal from './components/CategoriasYPresentacionesModal';
 import ProveedoresModal from './components/ProveedoresModal';
+import AjustarStockModal from './components/AjustarStockModal';
 
 const InventarioMedicamentos = () => {
   // Estados para almacenar datos
@@ -35,6 +36,39 @@ const InventarioMedicamentos = () => {
   const [showVerLoteModal, setShowVerLoteModal] = useState(false);
   const [showCategoriasModal, setShowCategoriasModal] = useState(false);
   const [showProveedoresModal, setShowProveedoresModal] = useState(false);
+
+  const [showAjustarStockModal, setShowAjustarStockModal] = useState(false);
+  // Función para manejar el ajuste de stock
+  const handleAjustarStock = (lote) => {
+    setLoteSeleccionado(lote);
+    setShowAjustarStockModal(true);
+  };
+  // Función para recargar datos después de ajustar stock
+  const handleStockAjustado = async () => {
+    try {
+      // Recargar lista de lotes
+      const lotesResponse = await stockService.listarStock();
+      setLotes(lotesResponse && lotesResponse.data ? lotesResponse.data : []);
+
+      // Recargar medicamentos con stock bajo
+      const stockBajoResponse = await medicamentoService.verificarStockBajo();
+      setStockBajo(stockBajoResponse && stockBajoResponse.data ? stockBajoResponse.data : []);
+
+      // Recargar lotes próximos a vencer
+      const proximosVencerResponse = await stockService.verificarStockProximoVencer();
+      setProximosVencer(proximosVencerResponse && proximosVencerResponse.data ? proximosVencerResponse.data : []);
+
+      // Si había un lote seleccionado, actualizar su información
+      if (loteSeleccionado) {
+        const updatedLoteResponse = await stockService.obtenerStockPorId(loteSeleccionado.id_stock);
+        if (updatedLoteResponse && updatedLoteResponse.data) {
+          setLoteSeleccionado(updatedLoteResponse.data);
+        }
+      }
+    } catch (error) {
+      console.error("Error al recargar datos:", error);
+    }
+  };
 
   // Estados para edición
   const [medicamentoSeleccionado, setMedicamentoSeleccionado] = useState(null);
@@ -747,10 +781,20 @@ const InventarioMedicamentos = () => {
                                     <Button
                                       variant="outline-primary"
                                       size="sm"
+                                      className="me-1"
                                       onClick={() => handleVerLote(lote.id_stock)}
                                     >
                                       <i className="fas fa-eye"></i>
                                     </Button>
+                                    {lote.estado === 'activo' && (
+                                      <Button
+                                        variant="outline-secondary"
+                                        size="sm"
+                                        onClick={() => handleAjustarStock(lote)}
+                                      >
+                                        <i className="fas fa-edit"></i>
+                                      </Button>
+                                    )}
                                   </td>
                                 </tr>
                               );
@@ -823,6 +867,22 @@ const InventarioMedicamentos = () => {
               handleDesactivarLote(id, estado);
             }, 500);
           }}
+          onAjustarStock={(lote) => {
+            setShowVerLoteModal(false);
+            setTimeout(() => {
+              handleAjustarStock(lote);
+            }, 500);
+          }}
+        />
+      )}
+
+      {/* Nuevo modal para ajustar stock */}
+      {loteSeleccionado && (
+        <AjustarStockModal
+          show={showAjustarStockModal}
+          onHide={() => setShowAjustarStockModal(false)}
+          lote={loteSeleccionado}
+          onSuccess={handleStockAjustado}
         />
       )}
 
