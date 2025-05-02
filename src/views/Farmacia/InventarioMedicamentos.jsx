@@ -29,6 +29,9 @@ const InventarioMedicamentos = () => {
     totalNotificaciones: 0
   });
 
+  // Estado para controlar cuándo se deben recargar los datos
+  const [shouldRefresh, setShouldRefresh] = useState(false);
+
   // Estados para filtrar lotes 
   const [showLotesAgotados, setShowLotesAgotados] = useState(false);
   const [lotesAgotados, setLotesAgotados] = useState([]);
@@ -95,7 +98,7 @@ const InventarioMedicamentos = () => {
     }
   }, [location]);
 
-  // Cargar datos iniciales
+  // Cargar datos iniciales - Modificado para actualizarse cuando shouldRefresh cambie
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -175,43 +178,24 @@ const InventarioMedicamentos = () => {
         setError("Ocurrió un error al cargar los datos. Por favor, intente nuevamente.");
       } finally {
         setLoading(false);
+        // Resetear el flag de actualización después de cargar
+        setShouldRefresh(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [shouldRefresh]); // Ahora este efecto se ejecutará cuando shouldRefresh cambie
 
-  // Función para recargar datos después de ajustar stock
+  // Función para recargar datos después de ajustar stock - Ahora simplemente activa la actualización
   const handleStockAjustado = async () => {
-    try {
-      // Recargar lista de lotes
-      const lotesResponse = await stockService.listarStock();
-      setLotes(lotesResponse && lotesResponse.data ? lotesResponse.data : []);
+    setShouldRefresh(true);
 
-      // Recargar medicamentos con stock bajo
-      const stockBajoResponse = await medicamentoService.verificarStockBajo();
-      setStockBajo(stockBajoResponse && stockBajoResponse.data ? stockBajoResponse.data : []);
-
-      // Recargar lotes próximos a vencer
-      const proximosVencerResponse = await stockService.verificarStockProximoVencer();
-      setProximosVencer(proximosVencerResponse && proximosVencerResponse.data ? proximosVencerResponse.data : []);
-
-      // Si había un lote seleccionado, actualizar su información
-      if (loteSeleccionado) {
-        const updatedLoteResponse = await stockService.obtenerStockPorId(loteSeleccionado.id_stock);
-        if (updatedLoteResponse && updatedLoteResponse.data) {
-          setLoteSeleccionado(updatedLoteResponse.data);
-        }
+    // Si había un lote seleccionado, actualizar su información
+    if (loteSeleccionado) {
+      const updatedLoteResponse = await stockService.obtenerStockPorId(loteSeleccionado.id_stock);
+      if (updatedLoteResponse && updatedLoteResponse.data) {
+        setLoteSeleccionado(updatedLoteResponse.data);
       }
-
-      // Recargar lotes agotados
-      const lotesAgotadosResponse = await stockService.listarLotesAgotados();
-      if (lotesAgotadosResponse && lotesAgotadosResponse.data) {
-        setLotesAgotados(lotesAgotadosResponse.data);
-      }
-
-    } catch (error) {
-      console.error("Error al recargar datos:", error);
     }
   };
 
@@ -290,7 +274,7 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  // Manejar guardado de nuevo medicamento o actualización
+  // Manejar guardado de nuevo medicamento o actualización - Actualizado para usar shouldRefresh
   const handleGuardarMedicamento = async (medicamentoData) => {
     try {
       if (medicamentoSeleccionado) {
@@ -301,9 +285,8 @@ const InventarioMedicamentos = () => {
         await medicamentoService.crearMedicamento(medicamentoData);
       }
 
-      // Recargar lista de medicamentos
-      const response = await medicamentoService.listarMedicamentos();
-      setMedicamentos(response && response.data ? response.data : []);
+      // Solicitar actualización de datos
+      setShouldRefresh(true);
 
       setShowMedicamentoModal(false);
     } catch (error) {
@@ -312,18 +295,13 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  // Manejar guardado de nuevo lote
+  // Manejar guardado de nuevo lote - Actualizado para usar shouldRefresh
   const handleGuardarLote = async (loteData) => {
     try {
       await stockService.crearStock(loteData);
 
-      // Recargar lista de lotes
-      const lotesResponse = await stockService.listarStock();
-      setLotes(lotesResponse && lotesResponse.data ? lotesResponse.data : []);
-
-      // Recargar medicamentos con stock bajo
-      const stockBajoResponse = await medicamentoService.verificarStockBajo();
-      setStockBajo(stockBajoResponse && stockBajoResponse.data ? stockBajoResponse.data : []);
+      // Solicitar actualización de datos
+      setShouldRefresh(true);
 
       setShowLoteModal(false);
     } catch (error) {
@@ -332,15 +310,14 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  // Manejar cambio de estado de medicamento
+  // Manejar cambio de estado de medicamento - Actualizado para usar shouldRefresh
   const handleDesactivarMedicamento = async (id) => {
     if (window.confirm("¿Está seguro que desea desactivar este medicamento?")) {
       try {
         await medicamentoService.desactivarMedicamento(id);
 
-        // Recargar lista de medicamentos
-        const response = await medicamentoService.listarMedicamentos();
-        setMedicamentos(response && response.data ? response.data : []);
+        // Solicitar actualización de datos
+        setShouldRefresh(true);
       } catch (error) {
         console.error("Error al desactivar medicamento:", error);
         alert("Error al desactivar el medicamento");
@@ -348,19 +325,14 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  // Manejar cambio de estado de lote
+  // Manejar cambio de estado de lote - Actualizado para usar shouldRefresh
   const handleDesactivarLote = async (id, estado) => {
     if (window.confirm(`¿Está seguro que desea marcar este lote como ${estado}?`)) {
       try {
         await stockService.cambiarEstadoStock(id, estado);
 
-        // Recargar lista de lotes
-        const response = await stockService.listarStock();
-        setLotes(response && response.data ? response.data : []);
-
-        // Recargar lotes próximos a vencer
-        const proximosVencerResponse = await stockService.verificarStockProximoVencer();
-        setProximosVencer(proximosVencerResponse && proximosVencerResponse.data ? proximosVencerResponse.data : []);
+        // Solicitar actualización de datos
+        setShouldRefresh(true);
       } catch (error) {
         console.error("Error al cambiar estado del lote:", error);
         alert("Error al cambiar el estado del lote");
@@ -499,18 +471,25 @@ const InventarioMedicamentos = () => {
                               // Calcular porcentaje de stock
                               const stockActual = med.stock_actual || 0;
                               const stockMinimo = med.stock_minimo || 10;
+                              const mitadStockMinimo = stockMinimo / 2;
                               const porcentajeStock = Math.min(100, Math.floor((stockActual / stockMinimo) * 100));
 
-                              // Determinar estado y variante de progreso
+                              // Determinar estado y variante de progreso según los nuevos criterios
                               let estadoStock = "Normal";
                               let variantProgress = "success";
 
-                              if (stockActual <= stockMinimo * 0.3) {
-                                estadoStock = "Stock Bajo";
+                              if (stockActual <= mitadStockMinimo) {
+                                // Stock actual es menor o igual a la mitad del stock mínimo
+                                estadoStock = "Stock Crítico";
                                 variantProgress = "danger";
-                              } else if (stockActual <= stockMinimo * 0.7) {
+                              } else if (stockActual <= stockMinimo) {
+                                // Stock actual es menor o igual al stock mínimo pero mayor que la mitad
                                 estadoStock = "Stock Bajo";
                                 variantProgress = "warning";
+                              } else {
+                                // Stock actual es mayor que el stock mínimo
+                                estadoStock = "Stock Normal";
+                                variantProgress = "success";
                               }
 
                               return (
@@ -946,9 +925,8 @@ const InventarioMedicamentos = () => {
         onAddCategoria={async (categoria) => {
           try {
             await categoriaService.crearCategoria(categoria);
-            // Recargar categorías
-            const response = await categoriaService.listarCategorias();
-            setCategorias(response && response.data ? response.data : []);
+            // Solicitar actualización de datos
+            setShouldRefresh(true);
           } catch (error) {
             console.error("Error al guardar categoría:", error);
             alert("Error al guardar la categoría");
@@ -957,9 +935,8 @@ const InventarioMedicamentos = () => {
         onUpdateCategoria={async (id, categoria) => {
           try {
             await categoriaService.actualizarCategoria(id, categoria);
-            // Recargar categorías
-            const response = await categoriaService.listarCategorias();
-            setCategorias(response && response.data ? response.data : []);
+            // Solicitar actualización de datos
+            setShouldRefresh(true);
           } catch (error) {
             console.error("Error al actualizar categoría:", error);
             alert("Error al actualizar la categoría");
@@ -968,9 +945,8 @@ const InventarioMedicamentos = () => {
         onDeleteCategoria={async (id) => {
           try {
             await categoriaService.desactivarCategoria(id);
-            // Recargar categorías
-            const response = await categoriaService.listarCategorias();
-            setCategorias(response && response.data ? response.data : []);
+            // Solicitar actualización de datos
+            setShouldRefresh(true);
           } catch (error) {
             console.error("Error al desactivar categoría:", error);
             alert("Error al desactivar la categoría");
@@ -979,9 +955,8 @@ const InventarioMedicamentos = () => {
         onAddPresentacion={async (presentacion) => {
           try {
             await presentacionService.crearPresentacion(presentacion);
-            // Recargar presentaciones
-            const response = await presentacionService.listarPresentaciones();
-            setPresentaciones(response && response.data ? response.data : []);
+            // Solicitar actualización de datos
+            setShouldRefresh(true);
           } catch (error) {
             console.error("Error al guardar presentación:", error);
             alert("Error al guardar la presentación");
@@ -990,9 +965,8 @@ const InventarioMedicamentos = () => {
         onUpdatePresentacion={async (id, presentacion) => {
           try {
             await presentacionService.actualizarPresentacion(id, presentacion);
-            // Recargar presentaciones
-            const response = await presentacionService.listarPresentaciones();
-            setPresentaciones(response && response.data ? response.data : []);
+            // Solicitar actualización de datos
+            setShouldRefresh(true);
           } catch (error) {
             console.error("Error al actualizar presentación:", error);
             alert("Error al actualizar la presentación");
@@ -1001,9 +975,8 @@ const InventarioMedicamentos = () => {
         onDeletePresentacion={async (id) => {
           try {
             await presentacionService.desactivarPresentacion(id);
-            // Recargar presentaciones
-            const response = await presentacionService.listarPresentaciones();
-            setPresentaciones(response && response.data ? response.data : []);
+            // Solicitar actualización de datos
+            setShouldRefresh(true);
           } catch (error) {
             console.error("Error al desactivar presentación:", error);
             alert("Error al desactivar la presentación");
