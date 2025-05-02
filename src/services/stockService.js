@@ -75,7 +75,7 @@ export const stockService = {
     }
   },
 
-  verificarStockProximoVencer: async (dias = 30) => {
+  verificarStockProximoVencer: async (dias = 90) => {
     try {
       const response = await axios.get(`${baseUrl}/proximos-vencer?dias=${dias}`, {
         withCredentials: true
@@ -83,6 +83,18 @@ export const stockService = {
       return response.data;
     } catch (error) {
       console.error('Error al verificar el stock próximo a vencer:', error);
+      throw error;
+    }
+  },
+  
+  listarLotesAgotados: async () => {
+    try {
+      const response = await axios.get(`${baseUrl}/lotes-agotados`, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al listar los lotes agotados:', error);
       throw error;
     }
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Row, Col, Card, Form, Button, Nav, Tab, Table, Badge, ProgressBar, InputGroup, FormControl, Alert, Pagination } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainCard from '../../components/Card/MainCard';
@@ -29,6 +29,10 @@ const InventarioMedicamentos = () => {
     totalNotificaciones: 0
   });
 
+  // Estados para filtrar lotes 
+  const [showLotesAgotados, setShowLotesAgotados] = useState(false);
+  const [lotesAgotados, setLotesAgotados] = useState([]);
+
   // Estados para modales
   const [showMedicamentoModal, setShowMedicamentoModal] = useState(false);
   const [showLoteModal, setShowLoteModal] = useState(false);
@@ -42,32 +46,6 @@ const InventarioMedicamentos = () => {
   const handleAjustarStock = (lote) => {
     setLoteSeleccionado(lote);
     setShowAjustarStockModal(true);
-  };
-  // Función para recargar datos después de ajustar stock
-  const handleStockAjustado = async () => {
-    try {
-      // Recargar lista de lotes
-      const lotesResponse = await stockService.listarStock();
-      setLotes(lotesResponse && lotesResponse.data ? lotesResponse.data : []);
-
-      // Recargar medicamentos con stock bajo
-      const stockBajoResponse = await medicamentoService.verificarStockBajo();
-      setStockBajo(stockBajoResponse && stockBajoResponse.data ? stockBajoResponse.data : []);
-
-      // Recargar lotes próximos a vencer
-      const proximosVencerResponse = await stockService.verificarStockProximoVencer();
-      setProximosVencer(proximosVencerResponse && proximosVencerResponse.data ? proximosVencerResponse.data : []);
-
-      // Si había un lote seleccionado, actualizar su información
-      if (loteSeleccionado) {
-        const updatedLoteResponse = await stockService.obtenerStockPorId(loteSeleccionado.id_stock);
-        if (updatedLoteResponse && updatedLoteResponse.data) {
-          setLoteSeleccionado(updatedLoteResponse.data);
-        }
-      }
-    } catch (error) {
-      console.error("Error al recargar datos:", error);
-    }
   };
 
   // Estados para edición
@@ -164,12 +142,20 @@ const InventarioMedicamentos = () => {
           setProximosVencer([]);
         }
 
-        // Cargar todos los lotes
+        // Cargar todos los lotes activos
         const lotesResponse = await stockService.listarStock();
         if (lotesResponse && lotesResponse.data) {
           setLotes(lotesResponse.data);
         } else {
           setLotes([]);
+        }
+
+        // Cargar lotes agotados
+        const lotesAgotadosResponse = await stockService.listarLotesAgotados();
+        if (lotesAgotadosResponse && lotesAgotadosResponse.data) {
+          setLotesAgotados(lotesAgotadosResponse.data);
+        } else {
+          setLotesAgotados([]);
         }
 
         // Cargar notificaciones
@@ -194,6 +180,52 @@ const InventarioMedicamentos = () => {
 
     fetchData();
   }, []);
+
+  // Función para recargar datos después de ajustar stock
+  const handleStockAjustado = async () => {
+    try {
+      // Recargar lista de lotes
+      const lotesResponse = await stockService.listarStock();
+      setLotes(lotesResponse && lotesResponse.data ? lotesResponse.data : []);
+
+      // Recargar medicamentos con stock bajo
+      const stockBajoResponse = await medicamentoService.verificarStockBajo();
+      setStockBajo(stockBajoResponse && stockBajoResponse.data ? stockBajoResponse.data : []);
+
+      // Recargar lotes próximos a vencer
+      const proximosVencerResponse = await stockService.verificarStockProximoVencer();
+      setProximosVencer(proximosVencerResponse && proximosVencerResponse.data ? proximosVencerResponse.data : []);
+
+      // Si había un lote seleccionado, actualizar su información
+      if (loteSeleccionado) {
+        const updatedLoteResponse = await stockService.obtenerStockPorId(loteSeleccionado.id_stock);
+        if (updatedLoteResponse && updatedLoteResponse.data) {
+          setLoteSeleccionado(updatedLoteResponse.data);
+        }
+      }
+
+      // Recargar lotes agotados
+      const lotesAgotadosResponse = await stockService.listarLotesAgotados();
+      if (lotesAgotadosResponse && lotesAgotadosResponse.data) {
+        setLotesAgotados(lotesAgotadosResponse.data);
+      }
+
+    } catch (error) {
+      console.error("Error al recargar datos:", error);
+    }
+  };
+
+  //lógica para filtrar lotes
+  const filteredLotesWithoutSearch = useMemo(() => {
+    let lotesData = [...lotes];
+
+    // Agregar lotes agotados si se solicita
+    if (showLotesAgotados) {
+      lotesData = [...lotesData, ...lotesAgotados];
+    }
+
+    return lotesData;
+  }, [lotes, lotesAgotados, showLotesAgotados]);
 
   // Filtrar medicamentos según término de búsqueda
   const filteredMedicamentos = medicamentos.filter(med =>
@@ -637,9 +669,12 @@ const InventarioMedicamentos = () => {
                             <th>ID Stock</th>
                             <th>Número Lote</th>
                             <th>Medicamento</th>
+                            <th>Categoría</th>
+                            <th>Concentración</th>
                             <th>Fecha Caducidad</th>
                             <th>Días Restantes</th>
-                            <th>Cantidad Actual</th>
+                            <th>Cantidad Inicial</th>
+                            <th>Cantidad Disponible</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                           </tr>
@@ -663,6 +698,8 @@ const InventarioMedicamentos = () => {
                                   <td>{lote.id_stock}</td>
                                   <td>{lote.numero_lote}</td>
                                   <td>{lote.nombre}</td>
+                                  <td>{lote.nombre_categoria}</td>
+                                  <td>{lote.concentracion}</td>
                                   <td>
                                     {new Date(lote.fecha_caducidad).toLocaleDateString('es-ES')}
                                   </td>
@@ -671,6 +708,7 @@ const InventarioMedicamentos = () => {
                                       {diasRestantes} días
                                     </Badge>
                                   </td>
+                                  <td>{lote.cantidad_inicial}</td>
                                   <td>{lote.cantidad_disponible}</td>
                                   <td>
                                     <Badge bg="warning">
@@ -699,7 +737,7 @@ const InventarioMedicamentos = () => {
                             })
                           ) : (
                             <tr>
-                              <td colSpan="8" className="text-center">
+                              <td colSpan="11" className="text-center">
                                 <Alert variant="success" className="m-0">
                                   No hay lotes próximos a vencer
                                 </Alert>
@@ -717,6 +755,20 @@ const InventarioMedicamentos = () => {
               <Tab.Pane eventKey="lotes">
                 <Card>
                   <Card.Body>
+                    {/* Filtros de lotes - Ahora solo con botón para lotes agotados */}
+                    <Row className="mb-3">
+                      <Col md={12} className="text-end">
+                        <Button
+                          variant="outline-secondary"
+                          className="me-2"
+                          onClick={() => setShowLotesAgotados(!showLotesAgotados)}
+                        >
+                          <i className="fas fa-box me-1"></i>
+                          {showLotesAgotados ? "Ocultar lotes agotados" : "Mostrar lotes agotados"}
+                        </Button>
+                      </Col>
+                    </Row>
+
                     <div className="table-responsive">
                       <Table hover>
                         <thead>
@@ -733,8 +785,8 @@ const InventarioMedicamentos = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {lotes.length > 0 ? (
-                            lotes.map((lote) => {
+                          {filteredLotesWithoutSearch.length > 0 ? (
+                            filteredLotesWithoutSearch.map((lote) => {
                               let badgeVariant = "success";
                               let estadoTexto = "Activo";
 
