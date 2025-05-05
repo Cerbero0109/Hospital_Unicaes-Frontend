@@ -13,7 +13,7 @@ const menuItems = {
           type: 'item',
           icon: 'feather icon-home',
           url: '/dashboard',
-          roles: ['Administrador', 'Médico', 'Enfermero', 'Laboratorista', 'Farmacia'] 
+          roles: ['Administrador', 'Médico', 'Enfermero', 'Laboratorista', 'Farmacia']
         }
       ]
     },
@@ -134,16 +134,16 @@ const menuItems = {
           id: 'v_inventario_medicamentos',
           title: 'Inventario',
           type: 'item',
-          url: '/inventario-medicamentos', // Esta es la nueva ruta que hemos creado
+          url: '/inventario-medicamentos', 
           classes: 'nav-item',
           icon: 'feather icon-package',
           roles: ['Farmacia'] // Solo el rol Farmacia puede ver esta opción
         },
         {
-          id: 'v_examenes',
+          id: 'v_despacho',  
           title: 'Despacho',
           type: 'item',
-          url: '/examenes-pendientes',
+          url: '/despacho-medicamentos',  
           classes: 'nav-item',
           icon: 'fas fa-capsules',
           roles: ['Farmacia'] // Solo el rol Farmacia puede ver esta opción
@@ -154,7 +154,7 @@ const menuItems = {
           type: 'item',
           url: '/gestion-reportes',
           classes: 'nav-item',
-          icon: 'fas fa-chart-line', 
+          icon: 'fas fa-chart-line',
           roles: ['Farmacia'] // Solo el rol Farmacia puede ver esta opción
         }
       ]

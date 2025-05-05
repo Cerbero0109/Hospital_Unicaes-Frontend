@@ -136,7 +136,13 @@ const routes = [
         element: lazy(() => import('./views/Farmacia/InventarioMedicamentos')),
         roles: ['Farmacia']
       },
-
+      {
+        path: '/despacho-medicamentos',
+        exact: true,
+        guard: AuthGuard,
+        element: lazy(() => import('./views/Farmacia/DespachoMedicamentos')),
+        roles: ['Farmacia']
+      },
       {
         path: '*',
         exact: true,
