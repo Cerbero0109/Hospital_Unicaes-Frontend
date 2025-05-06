@@ -32,7 +32,7 @@ const routes = [
         exact: true,
         guard: AuthGuard,
         element: lazy(() => import('./views/pacientes_archivo/index_archivo_form')),
-        roles: ['Administrador', 'Médico', 'Enfermero','Laboratorista']
+        roles: ['Administrador', 'Médico', 'Enfermero', 'Laboratorista', 'Farmacia']
       },
       {
         //rutas del administrador
@@ -128,7 +128,21 @@ const routes = [
         guard: AuthGuard,
         element: lazy(() => import('./views/Laboratorio/Gestion-Reportes'))
       },
-
+      {
+        // Ruta para inventario de medicamentos de Farmacia
+        path: '/inventario-medicamentos',
+        exact: true,
+        guard: AuthGuard,
+        element: lazy(() => import('./views/Farmacia/InventarioMedicamentos')),
+        roles: ['Farmacia']
+      },
+      {
+        path: '/despacho-medicamentos',
+        exact: true,
+        guard: AuthGuard,
+        element: lazy(() => import('./views/Farmacia/DespachoMedicamentos')),
+        roles: ['Farmacia']
+      },
       {
         path: '*',
         exact: true,
