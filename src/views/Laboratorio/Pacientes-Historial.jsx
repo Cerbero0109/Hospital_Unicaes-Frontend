@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, InputGroup, FormControl, Row, Button, Modal, Table } from 'react-bootstrap';
 import DataTable from 'react-data-table-component';
-import { pacientesConExamenService, historialExamenesPorPacienteService } from 'services/examenService';
+import { pacientesConExamenService, historialExamenesPorPacienteService, marcarPacienteComoInactivoService } from 'services/examenService';
 import Card from '../../components/Card/MainCard';
 
 const PacientesHistorial = () => {
@@ -11,6 +11,9 @@ const PacientesHistorial = () => {
   const [showModal, setShowModal] = useState(false);
   const [historialExamenes, setHistorialExamenes] = useState([]);
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
+
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pacienteAEliminar, setPacienteAEliminar] = useState(null);
 
   useEffect(() => {
     const loadPacientes = async () => {
@@ -38,6 +41,23 @@ const PacientesHistorial = () => {
     }
   };
 
+  const handleDescartarPaciente = (paciente) => {
+    setPacienteAEliminar(paciente);
+    setShowConfirmModal(true);
+  };
+
+  const confirmarDescartar = async () => {
+    try {
+      await marcarPacienteComoInactivoService.marcarPacienteComoInactivo(pacienteAEliminar.id_paciente);
+      setPacientes(prev => prev.filter(p => p.id_paciente !== pacienteAEliminar.id_paciente));
+    } catch (error) {
+      console.error('Error al descartar paciente:', error);
+    } finally {
+      setShowConfirmModal(false);
+      setPacienteAEliminar(null);
+    }
+  };
+
   const columns = [
     { name: 'Nombre', selector: row => `${row.nombre_paciente} ${row.apellido_paciente}`, sortable: true },
     { name: 'DUI', selector: row => row.dui_paciente, sortable: true },
@@ -55,7 +75,6 @@ const PacientesHistorial = () => {
         >
           <i className="fas fa-clipboard-list"></i>
         </Button>
-        
       ),
       ignoreRowClick: true,
       allowOverflow: true,
@@ -68,10 +87,10 @@ const PacientesHistorial = () => {
           variant="danger"
           size="sm"
           className="mt-2 mb-2 ps-3 pe-2"
+          onClick={() => handleDescartarPaciente(row)}
         >
           <i className="fas fa-times"></i>
         </Button>
-        
       ),
       ignoreRowClick: true,
       allowOverflow: true,
@@ -114,7 +133,9 @@ const PacientesHistorial = () => {
       {/* Modal para mostrar historial */}
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
         <Modal.Header closeButton>
-          <Modal.Title>Historial de Exámenes {pacienteSeleccionado && `- ${pacienteSeleccionado.nombre_paciente} ${pacienteSeleccionado.apellido_paciente}`}</Modal.Title>
+          <Modal.Title>
+            Historial de Exámenes {pacienteSeleccionado && `- ${pacienteSeleccionado.nombre_paciente} ${pacienteSeleccionado.apellido_paciente}`}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {historialExamenes.length > 0 ? (
@@ -143,6 +164,28 @@ const PacientesHistorial = () => {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Cerrar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal de confirmación para descartar paciente */}
+      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmar eliminación</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {pacienteAEliminar && (
+            <p>
+              ¿Estás seguro de que deseas descartar al paciente <strong>{pacienteAEliminar.nombre_paciente} {pacienteAEliminar.apellido_paciente}</strong>?
+            </p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={confirmarDescartar}>
+            Sí, descartar
           </Button>
         </Modal.Footer>
       </Modal>

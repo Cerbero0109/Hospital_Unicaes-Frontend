@@ -14,9 +14,9 @@ export const listarExamenesPendientesService = {
             throw error;
         }
     },
-    marcarExamenComoInactivo: async (id_examen) => { // CORRECCIÓN: Eliminar "Service" del nombre
+    marcarExamenComoInactivo: async (id_examen) => { 
         try {
-            const response = await axios.put(`${baseUrl}/${id_examen}/inactivo`, {}, { // URL consistente con la ruta backend
+            const response = await axios.put(`${baseUrl}/examen-inactivo/${id_examen}`, {}, { 
                 withCredentials: true
             });
             return response.data;
@@ -58,7 +58,7 @@ export const historialExamenesPorPacienteService = {
 export const mostrarResultadosExamenService = {
     getResultadosExamen: async (id_examen) => {
         try {
-            const response = await axios.get(`${baseUrl}/${id_examen}/resultados`, {
+            const response = await axios.get(`${baseUrl}/resultados/${id_examen}`, {
                 withCredentials: true
             });
             return response.data;
@@ -69,7 +69,7 @@ export const mostrarResultadosExamenService = {
     },
     crearResultadoExamen: async (id_examen, nuevoResultado) => {
         try {
-            const response = await axios.post(`${baseUrl}/${id_examen}/resultados`, nuevoResultado, {
+            const response = await axios.post(`${baseUrl}/resultados/${id_examen}`, nuevoResultado, {
                 withCredentials: true
             });
             return response.data;
@@ -91,7 +91,7 @@ export const mostrarResultadosExamenService = {
     },
     eliminarResultadoExamen: async (id_resultado) => {
         try {
-            const response = await axios.put(`${baseUrl}/resultados-inactivo/${id_resultado}`, { estado: 'inactivo' }, { // URL consistente con baseUrl
+            const response = await axios.delete(`${baseUrl}/resultados-eliminar/${id_resultado}`,  {
                 withCredentials: true
             });
             return response.data;
@@ -102,7 +102,7 @@ export const mostrarResultadosExamenService = {
     },
     marcarExamenComoCompletadoService: async (id_examen) => {
         try {
-            const response = await axios.put(`${baseUrl}/${id_examen}/completar`, {}, {
+            const response = await axios.put(`${baseUrl}/completar/${id_examen}`, {}, {
                 withCredentials: true
             });
             return response.data;
@@ -125,4 +125,18 @@ export const listarExamenesCompletadosService = {
             throw error;
         }
     },
+};
+
+export const marcarPacienteComoInactivoService = {
+    marcarPacienteComoInactivo: async (id_paciente) => {
+        try {
+            const response = await axios.put(`${baseUrl}/paciente-inactivo/${id_paciente}`, {}, { 
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al marcar el paciente como inactivo:', error); // Mensaje de error correcto
+            throw error;
+        }
+    }
 };
