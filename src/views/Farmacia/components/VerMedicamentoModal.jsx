@@ -1,17 +1,78 @@
+//npm install jquery datatables.net datatables.net-bs5 datatables.net-responsive-bs5
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Row, Col, Card, Table, Badge, Spinner } from 'react-bootstrap';
+import { Modal, Button, Row, Col, Card, Table, Badge, Spinner, Form, InputGroup } from 'react-bootstrap';
 import { inventarioMovimientosService } from '../../../services/inventarioMovimientosService';
+
+// Estilos personalizados para el modal más ancho
+const customStyles = `
+  .modal-extra-wide .modal-xl {
+    max-width: 95%;
+  }
+  
+  @media (min-width: 1200px) {
+    .modal-extra-wide .modal-xl {
+      max-width: 1400px;
+    }
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .pagination-custom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+  }
+  
+  .pagination-info {
+    color: #6c757d;
+  }
+  
+  .search-container {
+    margin-bottom: 15px;
+  }
+  
+  .text-overflow-ellipsis {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
 
 const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) => {
   // Si no hay medicamento seleccionado, no mostramos el modal
   if (!medicamento) {
     return null;
   }
+  
+  // Agregar estilos personalizados al documento
+  useEffect(() => {
+    // Crear elemento de estilo
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = customStyles;
+    document.head.appendChild(styleElement);
+    
+    // Limpiar al desmontar
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   // Estados para el historial de movimientos
   const [movimientos, setMovimientos] = useState([]);
   const [loadingMovimientos, setLoadingMovimientos] = useState(false);
   const [errorMovimientos, setErrorMovimientos] = useState(null);
+  
+  // Estados para paginación y búsqueda
+  const [searchLotes, setSearchLotes] = useState('');
+  const [searchMovimientos, setSearchMovimientos] = useState('');
+  const [currentPageLotes, setCurrentPageLotes] = useState(1);
+  const [currentPageMovimientos, setCurrentPageMovimientos] = useState(1);
+  const [itemsPerPageLotes, setItemsPerPageLotes] = useState(5);
+  const [itemsPerPageMovimientos, setItemsPerPageMovimientos] = useState(10);
 
   // Cargar historial de movimientos cuando se abre el modal
   useEffect(() => {
@@ -48,9 +109,141 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
     const date = new Date(dateString);
     return date.toLocaleString('es-ES');
   };
+  
+  // Filtrar lotes
+  const filteredLotes = medicamento.lotes ? medicamento.lotes.filter(lote => {
+    return (
+      String(lote.id_stock || '').toLowerCase().includes(searchLotes.toLowerCase()) ||
+      String(lote.numero_lote || '').toLowerCase().includes(searchLotes.toLowerCase()) ||
+      formatDate(lote.fecha_caducidad).toLowerCase().includes(searchLotes.toLowerCase())
+    );
+  }) : [];
+  
+  // Filtrar movimientos
+  const filteredMovimientos = movimientos.filter(movimiento => {
+    return (
+      formatDateTime(movimiento.fecha_hora).toLowerCase().includes(searchMovimientos.toLowerCase()) ||
+      String(movimiento.tipo || '').toLowerCase().includes(searchMovimientos.toLowerCase()) ||
+      String(movimiento.cantidad || '').toLowerCase().includes(searchMovimientos.toLowerCase()) ||
+      String(movimiento.numero_lote || '').toLowerCase().includes(searchMovimientos.toLowerCase()) ||
+      String(movimiento.usuario || '').toLowerCase().includes(searchMovimientos.toLowerCase()) ||
+      String(movimiento.origen_destino || '').toLowerCase().includes(searchMovimientos.toLowerCase())
+    );
+  });
+  
+  // Calcular índices para paginación de lotes
+  const indexOfLastLote = currentPageLotes * itemsPerPageLotes;
+  const indexOfFirstLote = indexOfLastLote - itemsPerPageLotes;
+  const currentLotes = filteredLotes.slice(indexOfFirstLote, indexOfLastLote);
+  
+  // Calcular índices para paginación de movimientos
+  const indexOfLastMovimiento = currentPageMovimientos * itemsPerPageMovimientos;
+  const indexOfFirstMovimiento = indexOfLastMovimiento - itemsPerPageMovimientos;
+  const currentMovimientos = filteredMovimientos.slice(indexOfFirstMovimiento, indexOfLastMovimiento);
+  
+  // Calcular total de páginas
+  const totalPagesLotes = Math.ceil(filteredLotes.length / itemsPerPageLotes);
+  const totalPagesMovimientos = Math.ceil(filteredMovimientos.length / itemsPerPageMovimientos);
+  
+  // Funciones para cambiar de página
+  const paginate = (pageNumber, setPage) => setPage(pageNumber);
+  
+  // Renderizar paginación
+  const renderPagination = (currentPage, totalPages, paginate, setPage, itemsPerPage, setItemsPerPage, totalItems, firstIndex, lastIndex) => {
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    
+    return (
+      <div className="pagination-custom">
+        <div className="pagination-info">
+          Mostrando {totalItems === 0 ? 0 : Math.min(firstIndex + 1, totalItems)} - {Math.min(lastIndex, totalItems)} de {totalItems} registros
+        </div>
+        
+        <div className="d-flex align-items-center">
+          <div className="me-3">
+            <Form.Select 
+              size="sm" 
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setPage(1);
+              }}
+            >
+              <option value="5">5 por página</option>
+              <option value="10">10 por página</option>
+              <option value="25">25 por página</option>
+              <option value="50">50 por página</option>
+            </Form.Select>
+          </div>
+          
+          <ul className="pagination pagination-sm mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                onClick={() => paginate(1, setPage)}
+                className="page-link"
+                disabled={currentPage === 1}
+              >
+                &laquo;
+              </button>
+            </li>
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                onClick={() => paginate(currentPage - 1, setPage)}
+                className="page-link"
+                disabled={currentPage === 1}
+              >
+                &lt;
+              </button>
+            </li>
+            
+            {pageNumbers.map(number => (
+              <li key={number} className={`page-item ${currentPage === number ? 'active' : ''}`}>
+                <button
+                  onClick={() => paginate(number, setPage)}
+                  className="page-link"
+                >
+                  {number}
+                </button>
+              </li>
+            ))}
+            
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                onClick={() => paginate(currentPage + 1, setPage)}
+                className="page-link"
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                &gt;
+              </button>
+            </li>
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                onClick={() => paginate(totalPages, setPage)}
+                className="page-link"
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                &raquo;
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <Modal show={show} onHide={onHide} size="lg">
+    <Modal show={show} onHide={onHide} size="xl" className="modal-extra-wide">
       <Modal.Header closeButton>
         <Modal.Title>Detalle de Medicamento</Modal.Title>
       </Modal.Header>
@@ -132,16 +325,16 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
                 </Col>
               </Row>
             )}
-            {medicamento.requiere_receta && (
-              <Row>
-                <Col md={12}>
-                  <p className="text-muted mb-1">Requiere Receta</p>
-                  <p>
-                    <Badge bg="info">Sí</Badge>
-                  </p>
-                </Col>
-              </Row>
-            )}
+            <Row>
+              <Col md={12}>
+                <p className="text-muted mb-1">Requiere Receta</p>
+                <p>
+                  <Badge bg={medicamento.requiere_receta ? "info" : "secondary"}>
+                    {medicamento.requiere_receta ? "Sí" : "No"}
+                  </Badge>
+                </p>
+              </Col>
+            </Row>
           </Card.Body>
         </Card>
 
@@ -153,66 +346,98 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
             </Button>
           </Card.Header>
           <Card.Body>
-            <div className="table-responsive">
-              <Table hover>
-                <thead>
-                  <tr>
-                    <th>ID Stock</th>
-                    <th>Lote</th>
-                    <th>Fecha Caducidad</th>
-                    <th>Cantidad</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {medicamento.lotes && medicamento.lotes.length > 0 ? (
-                    medicamento.lotes.map(lote => {
-                      // Determinar estado del lote
-                      let badgeVariant = "success";
-                      let estadoText = "Activo";
+            {medicamento.lotes && medicamento.lotes.length > 0 ? (
+              <>
+                <div className="search-container">
+                  <InputGroup size="sm">
+                    <InputGroup.Text><i className="fas fa-search"></i></InputGroup.Text>
+                    <Form.Control
+                      type="text"
+                      placeholder="Buscar lotes..."
+                      value={searchLotes}
+                      onChange={(e) => {
+                        setSearchLotes(e.target.value);
+                        setCurrentPageLotes(1);
+                      }}
+                    />
+                  </InputGroup>
+                </div>
+                
+                <div className="table-container">
+                  <Table hover responsive>
+                    <thead>
+                      <tr>
+                        <th>ID Stock</th>
+                        <th>Lote</th>
+                        <th>Fecha Caducidad</th>
+                        <th>Cantidad</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentLotes.map(lote => {
+                        // Determinar estado del lote
+                        let badgeVariant = "success";
+                        let estadoText = "Activo";
 
-                      if (lote.estado === 'agotado') {
-                        badgeVariant = "secondary";
-                        estadoText = "Agotado";
-                      } else if (lote.estado === 'vencido') {
-                        badgeVariant = "danger";
-                        estadoText = "Vencido";
-                      } else {
-                        // Calcular si está próximo a vencer
-                        const hoy = new Date();
-                        const fechaCaducidad = new Date(lote.fecha_caducidad);
-                        const diasRestantes = Math.ceil((fechaCaducidad - hoy) / (1000 * 60 * 60 * 24));
+                        if (lote.estado === 'agotado') {
+                          badgeVariant = "secondary";
+                          estadoText = "Agotado";
+                        } else if (lote.estado === 'vencido') {
+                          badgeVariant = "danger";
+                          estadoText = "Vencido";
+                        } else {
+                          // Calcular si está próximo a vencer
+                          const hoy = new Date();
+                          const fechaCaducidad = new Date(lote.fecha_caducidad);
+                          const diasRestantes = Math.ceil((fechaCaducidad - hoy) / (1000 * 60 * 60 * 24));
 
-                        if (diasRestantes <= 90) {
-                          badgeVariant = "warning";
-                          estadoText = "Próximo a vencer";
+                          if (diasRestantes <= 90) {
+                            badgeVariant = "warning";
+                            estadoText = "Próximo a vencer";
+                          }
                         }
-                      }
 
-                      return (
-                        <tr key={lote.id_stock}>
-                          <td>{lote.id_stock}</td>
-                          <td>{lote.numero_lote}</td>
-                          <td>{formatDate(lote.fecha_caducidad)}</td>
-                          <td>{lote.cantidad_disponible}</td>
-                          <td>
-                            <Badge bg={badgeVariant}>
-                              {estadoText}
-                            </Badge>
-                          </td>
+                        return (
+                          <tr key={lote.id_stock}>
+                            <td>{lote.id_stock}</td>
+                            <td>{lote.numero_lote}</td>
+                            <td>{formatDate(lote.fecha_caducidad)}</td>
+                            <td>{lote.cantidad_disponible}</td>
+                            <td>
+                              <Badge bg={badgeVariant}>
+                                {estadoText}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {currentLotes.length === 0 && (
+                        <tr>
+                          <td colSpan="5" className="text-center">No se encontraron lotes con el criterio de búsqueda</td>
                         </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="text-center">
-                        No hay lotes disponibles para este medicamento
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </Table>
-            </div>
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+                
+                {renderPagination(
+                  currentPageLotes,
+                  totalPagesLotes,
+                  paginate,
+                  setCurrentPageLotes,
+                  itemsPerPageLotes,
+                  setItemsPerPageLotes,
+                  filteredLotes.length,
+                  indexOfFirstLote,
+                  indexOfLastLote
+                )}
+              </>
+            ) : (
+              <div className="alert alert-info">
+                No hay lotes disponibles para este medicamento
+              </div>
+            )}
           </Card.Body>
         </Card>
 
@@ -229,44 +454,80 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
             ) : errorMovimientos ? (
               <div className="alert alert-danger">{errorMovimientos}</div>
             ) : (
-              <div className="table-responsive">
-                <Table hover>
-                  <thead>
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Tipo</th>
-                      <th>Cantidad</th>
-                      <th>Lote</th>
-                      <th>Usuario</th>
-                      <th>Origen/Destino</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {movimientos.length > 0 ? (
-                      movimientos.map((movimiento, index) => (
-                        <tr key={index}>
-                          <td>{formatDateTime(movimiento.fecha_hora)}</td>
-                          <td>
-                            <Badge bg={movimiento.tipo === 'Entrada' ? 'success' : 'danger'}>
-                              {movimiento.tipo}
-                            </Badge>
-                          </td>
-                          <td>{movimiento.cantidad}</td>
-                          <td>{movimiento.numero_lote}</td>
-                          <td>{movimiento.usuario}</td>
-                          <td>{movimiento.origen_destino}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="6" className="text-center">
-                          No hay movimientos registrados para este medicamento
-                        </td>
-                      </tr>
+              <>
+                {movimientos.length > 0 ? (
+                  <>
+                    <div className="search-container">
+                      <InputGroup size="sm">
+                        <InputGroup.Text><i className="fas fa-search"></i></InputGroup.Text>
+                        <Form.Control
+                          type="text"
+                          placeholder="Buscar movimientos..."
+                          value={searchMovimientos}
+                          onChange={(e) => {
+                            setSearchMovimientos(e.target.value);
+                            setCurrentPageMovimientos(1);
+                          }}
+                        />
+                      </InputGroup>
+                    </div>
+                    
+                    <div className="table-container">
+                      <Table hover responsive>
+                        <thead>
+                          <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Cantidad</th>
+                            <th>Lote</th>
+                            <th>Usuario</th>
+                            <th>Origen/Destino</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentMovimientos.map((movimiento, index) => (
+                            <tr key={index}>
+                              <td>{formatDateTime(movimiento.fecha_hora)}</td>
+                              <td>
+                                <Badge bg={movimiento.tipo === 'Entrada' ? 'success' : 'danger'}>
+                                  {movimiento.tipo}
+                                </Badge>
+                              </td>
+                              <td>{movimiento.cantidad}</td>
+                              <td>{movimiento.numero_lote}</td>
+                              <td>{movimiento.usuario}</td>
+                              <td className="text-overflow-ellipsis" title={movimiento.origen_destino}>
+                                {movimiento.origen_destino}
+                              </td>
+                            </tr>
+                          ))}
+                          {currentMovimientos.length === 0 && (
+                            <tr>
+                              <td colSpan="6" className="text-center">No se encontraron movimientos con el criterio de búsqueda</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </Table>
+                    </div>
+                    
+                    {renderPagination(
+                      currentPageMovimientos,
+                      totalPagesMovimientos,
+                      paginate,
+                      setCurrentPageMovimientos,
+                      itemsPerPageMovimientos,
+                      setItemsPerPageMovimientos,
+                      filteredMovimientos.length,
+                      indexOfFirstMovimiento,
+                      indexOfLastMovimiento
                     )}
-                  </tbody>
-                </Table>
-              </div>
+                  </>
+                ) : (
+                  <div className="alert alert-info">
+                    No hay movimientos registrados para este medicamento
+                  </div>
+                )}
+              </>
             )}
           </Card.Body>
         </Card>
