@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Modal, Button, Row, Col, Card, Table, Badge } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Modal, Button, Row, Col, Card, Table, Badge, Spinner } from 'react-bootstrap';
+import { inventarioMovimientosService } from '../../../services/inventarioMovimientosService';
 
 const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) => {
   // Si no hay medicamento seleccionado, no mostramos el modal
@@ -7,11 +8,45 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
     return null;
   }
 
+  // Estados para el historial de movimientos
+  const [movimientos, setMovimientos] = useState([]);
+  const [loadingMovimientos, setLoadingMovimientos] = useState(false);
+  const [errorMovimientos, setErrorMovimientos] = useState(null);
+
+  // Cargar historial de movimientos cuando se abre el modal
+  useEffect(() => {
+    if (show && medicamento && medicamento.id_medicamento) {
+      cargarHistorialMovimientos();
+    }
+  }, [show, medicamento]);
+
+  // Función para cargar el historial de movimientos
+  const cargarHistorialMovimientos = async () => {
+    setLoadingMovimientos(true);
+    setErrorMovimientos(null);
+    try {
+      const response = await inventarioMovimientosService.obtenerMovimientosPorMedicamento(medicamento.id_medicamento);
+      setMovimientos(response.data || []);
+    } catch (error) {
+      console.error("Error al cargar historial de movimientos:", error);
+      setErrorMovimientos("No se pudo cargar el historial de movimientos");
+    } finally {
+      setLoadingMovimientos(false);
+    }
+  };
+
   // Formatear fecha
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES');
+  };
+
+  // Formatear fecha y hora
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('es-ES');
   };
 
   return (
@@ -86,7 +121,7 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
                 <Col md={12}>
                   <p className="text-muted mb-1">Ubicación en Almacén</p>
                   <p>{medicamento.ubicacion_almacen}</p>
-                  </Col>
+                </Col>
               </Row>
             )}
             {medicamento.descripcion && (
@@ -135,7 +170,7 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
                       // Determinar estado del lote
                       let badgeVariant = "success";
                       let estadoText = "Activo";
-                      
+
                       if (lote.estado === 'agotado') {
                         badgeVariant = "secondary";
                         estadoText = "Agotado";
@@ -147,7 +182,7 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
                         const hoy = new Date();
                         const fechaCaducidad = new Date(lote.fecha_caducidad);
                         const diasRestantes = Math.ceil((fechaCaducidad - hoy) / (1000 * 60 * 60 * 24));
-                        
+
                         if (diasRestantes <= 90) {
                           badgeVariant = "warning";
                           estadoText = "Próximo a vencer";
@@ -186,28 +221,53 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
             <h6 className="mb-0">Historial de Movimientos</h6>
           </Card.Header>
           <Card.Body>
-            <div className="table-responsive">
-              <Table hover>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Cantidad</th>
-                    <th>Lote</th>
-                    <th>Usuario</th>
-                    <th>Origen/Destino</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Aquí se mostrarían los movimientos si estuvieran disponibles en la API */}
-                  <tr>
-                    <td colSpan="6" className="text-center">
-                      No hay movimientos registrados para este medicamento
-                    </td>
-                  </tr>
-                </tbody>
-              </Table>
-            </div>
+            {loadingMovimientos ? (
+              <div className="text-center p-3">
+                <Spinner animation="border" variant="primary" />
+                <p className="mt-2 mb-0">Cargando historial de movimientos...</p>
+              </div>
+            ) : errorMovimientos ? (
+              <div className="alert alert-danger">{errorMovimientos}</div>
+            ) : (
+              <div className="table-responsive">
+                <Table hover>
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Tipo</th>
+                      <th>Cantidad</th>
+                      <th>Lote</th>
+                      <th>Usuario</th>
+                      <th>Origen/Destino</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movimientos.length > 0 ? (
+                      movimientos.map((movimiento, index) => (
+                        <tr key={index}>
+                          <td>{formatDateTime(movimiento.fecha_hora)}</td>
+                          <td>
+                            <Badge bg={movimiento.tipo === 'Entrada' ? 'success' : 'danger'}>
+                              {movimiento.tipo}
+                            </Badge>
+                          </td>
+                          <td>{movimiento.cantidad}</td>
+                          <td>{movimiento.numero_lote}</td>
+                          <td>{movimiento.usuario}</td>
+                          <td>{movimiento.origen_destino}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="text-center">
+                          No hay movimientos registrados para este medicamento
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+            )}
           </Card.Body>
         </Card>
       </Modal.Body>
