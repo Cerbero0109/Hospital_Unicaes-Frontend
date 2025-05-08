@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Container, InputGroup, FormControl, Row, Button, Modal } from 'react-bootstrap';
 import DataTable from 'react-data-table-component';
-import { listarExamenesCompletadosService, mostrarResultadosExamenService } from 'services/examenService';
+import { listarExamenesCompletadosService, mostrarResultadosExamenService, obtenerResultadosPorPacienteService } from 'services/examenService';
 import Card from '../../components/Card/MainCard';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import logoUnicaes from '../../assets/images/UNICAES_LOGO.png'; // Adjust path as needed
 
 const GestionReportes = () => {
   const [examenes, setExamenes] = useState([]);
@@ -46,53 +48,105 @@ const GestionReportes = () => {
     {
       name: 'Ver Resultados',
       cell: row => (
-        <Button
-          variant="info"
-          size="sm"
-          className="mt-2 mb-2 ps-3 pe-2"
-          onClick={async () => {
-            setLoading(true);
-            try {
-              const resultados = await mostrarResultadosExamenService.getResultadosExamen(row.id_examen);
-              setSelectedResultado({
-                paciente: `${row.nombre_paciente} ${row.apellido_paciente}`,
-                muestra: row.nombre_muestra,
-                numeroExamen: row.id_examen,
-                fechaEmision: new Date(row.fecha_solicitud).toLocaleDateString('es-ES'),
-                examen: row.examen_nombre,
-                parametros: resultados, 
-              });
-              setShowResultadosModal(true);
-            } catch (error) {
-              console.error('Error al obtener los resultados del examen:', error);
-            } finally {
-              setLoading(false);
-            }
-          }}
-          disabled={loading}
-        >
-          <i className="fas fa-eye"></i>
-        </Button>
+      <Button
+        variant="info"
+        size="sm"
+        className="mt-2 mb-2 ps-3 pe-2"
+        onClick={async () => {
+        setLoading(true);
+        try {
+          const resultados = await mostrarResultadosExamenService.getResultadosExamen(row.id_examen);
+          setSelectedResultado({
+          paciente: `${row.nombre_paciente} ${row.apellido_paciente}`,
+          muestra: row.nombre_muestra,
+          numeroExamen: row.id_examen,
+          fechaEmision: new Date(row.fecha_solicitud).toLocaleDateString('es-ES'),
+          examen: row.examen_nombre,
+          parametros: resultados, 
+          });
+          setShowResultadosModal(true);
+        } catch (error) {
+          console.error('Error al obtener los resultados del examen:', error);
+        } finally {
+          setLoading(false);
+        }
+        }}
+        disabled={loading}
+      >
+        <i className="fas fa-eye"></i>
+      </Button>
       ),
       ignoreRowClick: true,
       allowOverflow: true,
       button: true
     },
-    {
-      name: 'Descargar',
-      cell: row => (
-        <Button
-          variant="warning"
-          size="sm"
-          className="mt-2 mb-2 ps-3 pe-2"
-          onClick={() => navigate(`/#`)}
-        >
-          <i className="fas fa-download"></i>
-        </Button>
-      ),
-      ignoreRowClick: true,
-      allowOverflow: true,
-      button: true
+     {
+    name: 'Descargar',
+    cell: row => (
+      <Button
+      variant="warning"
+      size="sm"
+      className="mt-2 mb-2 ps-3 pe-2"
+      onClick={async () => {
+        try {
+        const resultados = await mostrarResultadosExamenService.getResultadosExamen(row.id_examen);
+        const doc = new jsPDF();
+        
+        // Encabezado
+        // El logo
+        doc.addImage(logoUnicaes, 'PNG', 20, 10, 20, 20); 
+        
+        // Titulo
+        doc.setFontSize(18);
+        doc.text('Hospital UNICAES - Laboratorio Clinico', 105, 20, { align: 'center' });
+        
+        // Información del paciente
+        doc.setFontSize(12);
+        doc.text(`Paciente:${row.nombre_paciente} ${row.apellido_paciente} `, 20, 40);
+        doc.text(`Examen: ${row.examen_nombre}`, 20, 50);
+        doc.text(`Fecha: ${new Date(row.fecha_solicitud).toLocaleDateString('es-ES')}`, 20, 60);
+        doc.text(`Doctor: ${row.doctor_nombre} ${row.doctor_apellido}`, 20, 70);
+        
+        // Tabla de resultados
+        let yPos = 90;
+        doc.setFontSize(10);
+        
+        // Encabezados de la tabla
+        doc.text('Parámetro', 20, yPos);
+        doc.text('Valor', 80, yPos);
+        doc.text('Unidad', 120, yPos);
+        doc.text('Valor Referencia', 160, yPos);
+        
+        yPos += 10;
+        
+        // Contenido de la tabla
+        resultados.forEach(param => {
+          if (yPos > 270) { // Nueva página si se excede el límite
+          doc.addPage();
+          yPos = 20;
+          }
+          
+          doc.text(param.nombre_parametro?.toString() || '', 20, yPos);
+          doc.text(param.valor?.toString() || '', 80, yPos);
+          doc.text(param.unidad?.toString() || '', 120, yPos);
+          doc.text(param.rango_referencia?.toString() || '', 160, yPos);
+          
+          yPos += 10;
+        });
+        
+        // Guardar PDF
+        doc.save(`Resultados_${row.nombre_paciente}_${row.apellido_paciente}_${row.examen_nombre}.pdf`);
+        } catch (error) {
+        console.error("Error al generar PDF:", error);
+        }
+      }}
+      >
+      <i className="fas fa-download"></i>
+      </Button>
+    ),
+    ignoreRowClick: true,
+    allowOverflow: true,
+    button: true
     }
   ];
 
@@ -134,16 +188,15 @@ const GestionReportes = () => {
       </Card>
 
       {/* Modal de Resultados */}
-      <Modal show={showResultadosModal} onHide={handleCloseResultadosModal} centered>
+      <Modal size="lg" show={showResultadosModal} onHide={handleCloseResultadosModal} centered>
         <Modal.Header closeButton>
           <Modal.Title>Resultados de Laboratorio</Modal.Title>
         </Modal.Header>
         <Modal.Body>
   {selectedResultado && (
-    <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+    <div style={{ maxHeight: '80vh', overflowY: 'auto' }}>
       <p><strong>Paciente:</strong> {selectedResultado.paciente}</p>
       <p><strong>Muestra:</strong> {selectedResultado.muestra}</p>
-      <p><strong>Número de Examen:</strong> {selectedResultado.numeroExamen}</p>
       <p><strong>Fecha de Emisión:</strong> {selectedResultado.fechaEmision}</p>
       <p><strong>Examen:</strong> {selectedResultado.examen}</p>
 

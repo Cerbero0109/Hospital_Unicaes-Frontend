@@ -140,3 +140,17 @@ export const marcarPacienteComoInactivoService = {
         }
     }
 };
+
+export const obtenerResultadosPorPacienteService = {
+    getResultadosPorPaciente: async (id_paciente, id_examen) => {
+        try {
+            const response = await axios.get(`${baseUrl}/examen-pdf/${id_paciente}/${id_examen}`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al obtener los resultados por paciente:', error);
+            throw error;
+        }
+    },
+};
