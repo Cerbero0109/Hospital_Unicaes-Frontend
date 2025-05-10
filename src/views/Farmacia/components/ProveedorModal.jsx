@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
+import { Modal, Button, Form, Row, Col, Alert } from 'react-bootstrap';
 
 const ProveedorModal = ({ show, onHide, proveedor, onGuardar }) => {
   const [validated, setValidated] = useState(false);
@@ -11,6 +11,10 @@ const ProveedorModal = ({ show, onHide, proveedor, onGuardar }) => {
     direccion: '',
     ruc: ''
   });
+  
+  // Estado para mensajes de error personalizados
+  const [errors, setErrors] = useState({});
+  const [showErrorAlert, setShowErrorAlert] = useState(false);
 
   // Actualizar formulario cuando se selecciona un proveedor para editar
   useEffect(() => {
@@ -34,7 +38,10 @@ const ProveedorModal = ({ show, onHide, proveedor, onGuardar }) => {
         ruc: ''
       });
     }
+    // Limpiar validación y errores
     setValidated(false);
+    setErrors({});
+    setShowErrorAlert(false);
   }, [proveedor, show]);
 
   const handleChange = (e) => {
@@ -43,34 +50,85 @@ const ProveedorModal = ({ show, onHide, proveedor, onGuardar }) => {
       ...formData,
       [name]: value
     });
+    
+    // Limpiar error específico al editar el campo
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: null
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    let isValid = true;
+    
+    // Validar nombre (obligatorio)
+    if (!formData.nombre || formData.nombre.trim() === '') {
+      newErrors.nombre = 'El nombre del proveedor es obligatorio.';
+      isValid = false;
+    }
+    
+    // Validar formato de correo electrónico si se ha proporcionado
+    if (formData.correo && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.correo)) {
+      newErrors.correo = 'Formato de correo electrónico inválido.';
+      isValid = false;
+    }
+    
+    // Validar formato de teléfono si se ha proporcionado
+    if (formData.telefono && !/^[0-9\-\(\)\s\+]{7,15}$/.test(formData.telefono)) {
+      newErrors.telefono = 'Formato de teléfono inválido. Use solo números, guiones y paréntesis.';
+      isValid = false;
+    }
+    
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const form = e.currentTarget;
     
-    if (form.checkValidity() === false) {
+    // Marcar como validado para mostrar los mensajes de error de Bootstrap
+    setValidated(true);
+    
+    // Realizar validaciones personalizadas
+    const isValid = validateForm();
+    
+    // Verificar validez del formulario
+    if (form.checkValidity() === false || !isValid) {
       e.stopPropagation();
-      setValidated(true);
+      setShowErrorAlert(true);
       return;
     }
     
+    // Ocultar alerta si todo es válido
+    setShowErrorAlert(false);
+    
+    // Enviar datos
     onGuardar(formData);
   };
 
   return (
-    <Modal show={show} onHide={onHide} size="lg">
+    <Modal show={show} onHide={onHide} backdrop="static" size="lg">
       <Modal.Header closeButton>
         <Modal.Title>
           {proveedor ? 'Editar Proveedor' : 'Nuevo Proveedor'}
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>
+        {showErrorAlert && (
+          <Alert variant="danger" className="mb-3">
+            Por favor corrija los errores en el formulario antes de continuar.
+          </Alert>
+        )}
+        
         <Form noValidate validated={validated} onSubmit={handleSubmit}>
           <Row className="mb-3">
             <Col md={6}>
               <Form.Group controlId="proveedorNombre">
-                <Form.Label>Nombre del Proveedor</Form.Label>
+                <Form.Label>Nombre del Proveedor <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="text"
                   placeholder="Ej. Distribuidora Farmacéutica S.A."
@@ -78,9 +136,11 @@ const ProveedorModal = ({ show, onHide, proveedor, onGuardar }) => {
                   value={formData.nombre}
                   onChange={handleChange}
                   required
+                  isInvalid={validated && errors.nombre}
+                  className={errors.nombre ? 'border-danger' : ''}
                 />
                 <Form.Control.Feedback type="invalid">
-                  El nombre del proveedor es obligatorio.
+                  {errors.nombre || 'El nombre del proveedor es obligatorio.'}
                 </Form.Control.Feedback>
               </Form.Group>
             </Col>
@@ -108,7 +168,11 @@ const ProveedorModal = ({ show, onHide, proveedor, onGuardar }) => {
                   name="telefono"
                   value={formData.telefono}
                   onChange={handleChange}
+                  isInvalid={validated && errors.telefono}
                 />
+                <Form.Control.Feedback type="invalid">
+                  {errors.telefono}
+                </Form.Control.Feedback>
               </Form.Group>
             </Col>
             <Col md={6}>
@@ -120,9 +184,10 @@ const ProveedorModal = ({ show, onHide, proveedor, onGuardar }) => {
                   name="correo"
                   value={formData.correo}
                   onChange={handleChange}
+                  isInvalid={validated && errors.correo}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Ingrese un correo electrónico válido.
+                  {errors.correo || 'Ingrese un correo electrónico válido.'}
                 </Form.Control.Feedback>
               </Form.Group>
             </Col>
@@ -154,6 +219,10 @@ const ProveedorModal = ({ show, onHide, proveedor, onGuardar }) => {
               onChange={handleChange}
             />
           </Form.Group>
+          
+          <div className="text-muted mb-3">
+            <small>Los campos marcados con <span className="text-danger">*</span> son obligatorios</small>
+          </div>
         </Form>
       </Modal.Body>
       <Modal.Footer>

@@ -147,15 +147,6 @@ const menuItems = {
           classes: 'nav-item',
           icon: 'fas fa-capsules',
           roles: ['Farmacia'] // Solo el rol Farmacia puede ver esta opción
-        },
-        {
-          id: 'v_reportes',
-          title: 'Reportes',
-          type: 'item',
-          url: '/gestion-reportes',
-          classes: 'nav-item',
-          icon: 'fas fa-chart-line',
-          roles: ['Farmacia'] // Solo el rol Farmacia puede ver esta opción
         }
       ]
     }
