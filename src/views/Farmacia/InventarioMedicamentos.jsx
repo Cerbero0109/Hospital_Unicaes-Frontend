@@ -15,6 +15,20 @@ import CategoriasYPresentacionesModal from './components/CategoriasYPresentacion
 import ProveedoresModal from './components/ProveedoresModal';
 import AjustarStockModal from './components/AjustarStockModal';
 
+// Estilos personalizados para la paginación
+const customStyles = `
+  .pagination-custom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+  }
+  
+  .pagination-info {
+    color: #6c757d;
+  }
+`;
+
 const InventarioMedicamentos = () => {
   // Estados para almacenar datos
   const [medicamentos, setMedicamentos] = useState([]);
@@ -45,19 +59,20 @@ const InventarioMedicamentos = () => {
   const [showProveedoresModal, setShowProveedoresModal] = useState(false);
 
   const [showAjustarStockModal, setShowAjustarStockModal] = useState(false);
-  // Función para manejar el ajuste de stock
-  const handleAjustarStock = (lote) => {
-    setLoteSeleccionado(lote);
-    setShowAjustarStockModal(true);
-  };
-
+  
   // Estados para edición
   const [medicamentoSeleccionado, setMedicamentoSeleccionado] = useState(null);
   const [loteSeleccionado, setLoteSeleccionado] = useState(null);
   const [medicamentoParaLote, setMedicamentoParaLote] = useState(null);
 
-  // Estado para búsqueda
+  // Estado para búsqueda GLOBAL (una sola búsqueda para todas las tablas)
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Estados para paginación de cada pestaña
+  const [pagGeneral, setPagGeneral] = useState({ current: 1, itemsPerPage: 10 });
+  const [pagStockBajo, setPagStockBajo] = useState({ current: 1, itemsPerPage: 10 });
+  const [pagVencimiento, setPagVencimiento] = useState({ current: 1, itemsPerPage: 10 });
+  const [pagLotes, setPagLotes] = useState({ current: 1, itemsPerPage: 10 });
 
   // Estado para carga
   const [loading, setLoading] = useState(true);
@@ -68,6 +83,17 @@ const InventarioMedicamentos = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Agregar estilos personalizados al documento
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = customStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   // Cargar parámetros de URL si existen
   useEffect(() => {
@@ -98,7 +124,7 @@ const InventarioMedicamentos = () => {
     }
   }, [location]);
 
-  // Cargar datos iniciales - Modificado para actualizarse cuando shouldRefresh cambie
+  // Cargar datos iniciales
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -186,7 +212,7 @@ const InventarioMedicamentos = () => {
     fetchData();
   }, [shouldRefresh]); // Ahora este efecto se ejecutará cuando shouldRefresh cambie
 
-  // Función para recargar datos después de ajustar stock - Ahora simplemente activa la actualización
+  // Función para recargar datos después de ajustar stock
   const handleStockAjustado = async () => {
     setShouldRefresh(true);
 
@@ -199,8 +225,46 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  //lógica para filtrar lotes
-  const filteredLotesWithoutSearch = useMemo(() => {
+  // Función para manejar el ajuste de stock
+  const handleAjustarStock = (lote) => {
+    setLoteSeleccionado(lote);
+    setShowAjustarStockModal(true);
+  };
+
+  // Lógica para filtrar medicamentos en todas las pestañas usando searchTerm global
+  const filteredMedicamentosGeneral = useMemo(() => {
+    return medicamentos.filter(med =>
+      (med.codigo && med.codigo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (med.nombre && med.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (med.nombre_categoria && med.nombre_categoria.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (med.concentracion && med.concentracion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (med.via_administracion && med.via_administracion.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [medicamentos, searchTerm]);
+
+  // Lógica para filtrar medicamentos con stock bajo usando searchTerm global
+  const filteredStockBajo = useMemo(() => {
+    return stockBajo.filter(med =>
+      (med.codigo && med.codigo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (med.nombre && med.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (med.nombre_categoria && med.nombre_categoria.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (med.concentracion && med.concentracion.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [stockBajo, searchTerm]);
+
+  // Lógica para filtrar lotes próximos a vencer usando searchTerm global
+  const filteredVencimiento = useMemo(() => {
+    return proximosVencer.filter(lote =>
+      (lote.numero_lote && lote.numero_lote.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lote.nombre && lote.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lote.id_stock && lote.id_stock.toString().includes(searchTerm.toLowerCase())) ||
+      (lote.codigo && lote.codigo.toString().includes(searchTerm.toLowerCase())) ||
+      (lote.concentracion && lote.concentracion.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [proximosVencer, searchTerm]);
+
+  // Lógica para filtrar lotes usando searchTerm global
+  const filteredLotes = useMemo(() => {
     let lotesData = [...lotes];
 
     // Agregar lotes agotados si se solicita
@@ -208,15 +272,145 @@ const InventarioMedicamentos = () => {
       lotesData = [...lotesData, ...lotesAgotados];
     }
 
-    return lotesData;
-  }, [lotes, lotesAgotados, showLotesAgotados]);
+    return lotesData.filter(lote =>
+      (lote.numero_lote && lote.numero_lote.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lote.nombre && lote.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lote.id_stock && lote.id_stock.toString().includes(searchTerm.toLowerCase())) ||
+      (lote.codigo && lote.codigo.toString().includes(searchTerm.toLowerCase()))
+    );
+  }, [lotes, lotesAgotados, showLotesAgotados, searchTerm]);
 
-  // Filtrar medicamentos según término de búsqueda
-  const filteredMedicamentos = medicamentos.filter(med =>
-    (med.codigo && med.codigo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (med.nombre && med.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (med.nombre_categoria && med.nombre_categoria.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Función para calcular paginación
+  const getPaginatedData = (data, paginationState) => {
+    const { current, itemsPerPage } = paginationState;
+    const indexOfLastItem = current * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = data.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(data.length / itemsPerPage);
+    
+    return {
+      items: currentItems,
+      totalPages,
+      indexOfFirstItem,
+      indexOfLastItem,
+    };
+  };
+
+  // Función para cambiar de página
+  const paginate = (pageNumber, setPaginationState) => {
+    setPaginationState(prev => ({ ...prev, current: pageNumber }));
+  };
+
+  // Renderizar paginación
+  const renderPagination = (currentPage, totalPages, paginate, setPaginationState, itemsPerPage, totalItems, firstIndex, lastIndex) => {
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    
+    return (
+      <div className="pagination-custom">
+        <div className="pagination-info">
+          Mostrando {totalItems === 0 ? 0 : Math.min(firstIndex + 1, totalItems)} - {Math.min(lastIndex, totalItems)} de {totalItems} registros
+        </div>
+        
+        <div className="d-flex align-items-center">
+          <div className="me-3">
+            <Form.Select 
+              size="sm" 
+              value={itemsPerPage}
+              onChange={(e) => {
+                setPaginationState(prev => ({ 
+                  ...prev, 
+                  itemsPerPage: Number(e.target.value), 
+                  current: 1 
+                }));
+              }}
+            >
+              <option value="5">5 por página</option>
+              <option value="10">10 por página</option>
+              <option value="25">25 por página</option>
+              <option value="50">50 por página</option>
+            </Form.Select>
+          </div>
+          
+          <ul className="pagination pagination-sm mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                onClick={() => paginate(1, setPaginationState)}
+                className="page-link"
+                disabled={currentPage === 1}
+              >
+                &laquo;
+              </button>
+            </li>
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                onClick={() => paginate(currentPage - 1, setPaginationState)}
+                className="page-link"
+                disabled={currentPage === 1}
+              >
+                &lt;
+              </button>
+            </li>
+            
+            {pageNumbers.map(number => (
+              <li key={number} className={`page-item ${currentPage === number ? 'active' : ''}`}>
+                <button
+                  onClick={() => paginate(number, setPaginationState)}
+                  className="page-link"
+                >
+                  {number}
+                </button>
+              </li>
+            ))}
+            
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                onClick={() => paginate(currentPage + 1, setPaginationState)}
+                className="page-link"
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                &gt;
+              </button>
+            </li>
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                onClick={() => paginate(totalPages, setPaginationState)}
+                className="page-link"
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                &raquo;
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    );
+  };
+
+  // Efecto para resetear paginación cuando cambia el término de búsqueda
+  useEffect(() => {
+    setPagGeneral(prev => ({ ...prev, current: 1 }));
+    setPagStockBajo(prev => ({ ...prev, current: 1 }));
+    setPagVencimiento(prev => ({ ...prev, current: 1 }));
+    setPagLotes(prev => ({ ...prev, current: 1 }));
+  }, [searchTerm]);
+
+  // Obtener datos paginados para cada pestaña
+  const paginatedGeneral = getPaginatedData(filteredMedicamentosGeneral, pagGeneral);
+  const paginatedStockBajo = getPaginatedData(filteredStockBajo, pagStockBajo);
+  const paginatedVencimiento = getPaginatedData(filteredVencimiento, pagVencimiento);
+  const paginatedLotes = getPaginatedData(filteredLotes, pagLotes);
 
   // Abrir modal para crear nuevo medicamento
   const handleNuevoMedicamento = () => {
@@ -229,6 +423,7 @@ const InventarioMedicamentos = () => {
     setMedicamentoSeleccionado(medicamento);
     setShowMedicamentoModal(true);
   };
+  
   // Abrir modal para ver detalles de medicamento
   const handleVerMedicamento = async (id) => {
     try {
@@ -274,7 +469,7 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  // Manejar guardado de nuevo medicamento o actualización - Actualizado para usar shouldRefresh
+  // Manejar guardado de nuevo medicamento o actualización
   const handleGuardarMedicamento = async (medicamentoData) => {
     try {
       if (medicamentoSeleccionado) {
@@ -295,7 +490,7 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  // Manejar guardado de nuevo lote - Actualizado para usar shouldRefresh
+  // Manejar guardado de nuevo lote
   const handleGuardarLote = async (loteData) => {
     try {
       await stockService.crearStock(loteData);
@@ -310,7 +505,7 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  // Manejar cambio de estado de medicamento - Actualizado para usar shouldRefresh
+  // Manejar cambio de estado de medicamento
   const handleDesactivarMedicamento = async (id) => {
     if (window.confirm("¿Está seguro que desea desactivar este medicamento?")) {
       try {
@@ -325,7 +520,7 @@ const InventarioMedicamentos = () => {
     }
   };
 
-  // Manejar cambio de estado de lote - Actualizado para usar shouldRefresh
+  // Manejar cambio de estado de lote
   const handleDesactivarLote = async (id, estado) => {
     if (window.confirm(`¿Está seguro que desea marcar este lote como ${estado}?`)) {
       try {
@@ -377,7 +572,7 @@ const InventarioMedicamentos = () => {
     <Row>
       <Col>
         <MainCard title="Inventario de Medicamentos">
-          {/* Barra de búsqueda y botones de acción */}
+          {/* Barra de búsqueda GLOBAL y botones de acción */}
           <Row className="mb-3">
             <Col md={6}>
               <InputGroup>
@@ -385,7 +580,7 @@ const InventarioMedicamentos = () => {
                   <i className="fas fa-search"></i>
                 </InputGroup.Text>
                 <FormControl
-                  placeholder="Buscar medicamentos..."
+                  placeholder="Buscar en todas las pestañas..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -410,6 +605,9 @@ const InventarioMedicamentos = () => {
               <Nav.Item>
                 <Nav.Link eventKey="general">
                   <i className="fas fa-list me-1"></i> Listado General
+                  {filteredMedicamentosGeneral.length > 0 && searchTerm && (
+                    <Badge bg="primary" className="ms-1">{filteredMedicamentosGeneral.length}</Badge>
+                  )}
                 </Nav.Link>
               </Nav.Item>
               <Nav.Item>
@@ -417,6 +615,9 @@ const InventarioMedicamentos = () => {
                   <i className="fas fa-exclamation-triangle me-1"></i> Stock Bajo
                   {stockBajo.length > 0 && (
                     <Badge bg="danger" className="ms-1">{stockBajo.length}</Badge>
+                  )}
+                  {filteredStockBajo.length > 0 && searchTerm && (
+                    <Badge bg="primary" className="ms-1">{filteredStockBajo.length}</Badge>
                   )}
                 </Nav.Link>
               </Nav.Item>
@@ -426,11 +627,17 @@ const InventarioMedicamentos = () => {
                   {proximosVencer.length > 0 && (
                     <Badge bg="warning" className="ms-1">{proximosVencer.length}</Badge>
                   )}
+                  {filteredVencimiento.length > 0 && searchTerm && (
+                    <Badge bg="primary" className="ms-1">{filteredVencimiento.length}</Badge>
+                  )}
                 </Nav.Link>
               </Nav.Item>
               <Nav.Item>
                 <Nav.Link eventKey="lotes">
                   <i className="fas fa-boxes me-1"></i> Lotes
+                  {filteredLotes.length > 0 && searchTerm && (
+                    <Badge bg="primary" className="ms-1">{filteredLotes.length}</Badge>
+                  )}
                 </Nav.Link>
               </Nav.Item>
               <Nav.Item className="ms-auto">
@@ -466,8 +673,8 @@ const InventarioMedicamentos = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredMedicamentos.length > 0 ? (
-                            filteredMedicamentos.map((med) => {
+                          {paginatedGeneral.items.length > 0 ? (
+                            paginatedGeneral.items.map((med) => {
                               // Calcular porcentaje de stock
                               const stockActual = med.stock_actual || 0;
                               const stockMinimo = med.stock_minimo || 10;
@@ -509,7 +716,7 @@ const InventarioMedicamentos = () => {
                                         style={{
                                           width: '10px',
                                           height: '10px',
-                                          backgroundColor: variantProgress === 'danger' ? '#dc3545' :
+                                         backgroundColor: variantProgress === 'danger' ? '#dc3545' :
                                             variantProgress === 'warning' ? '#ffc107' : '#28a745'
                                         }}
                                       />
@@ -545,13 +752,27 @@ const InventarioMedicamentos = () => {
                           ) : (
                             <tr>
                               <td colSpan="10" className="text-center">
-                                No se encontraron medicamentos
+                                {searchTerm ? 
+                                  `No se encontraron medicamentos que coincidan con "${searchTerm}"` :
+                                  "No se encontraron medicamentos"
+                                }
                               </td>
                             </tr>
                           )}
                         </tbody>
                       </Table>
                     </div>
+                    
+                    {renderPagination(
+                      pagGeneral.current,
+                      paginatedGeneral.totalPages,
+                      paginate,
+                      setPagGeneral,
+                      pagGeneral.itemsPerPage,
+                      filteredMedicamentosGeneral.length,
+                      paginatedGeneral.indexOfFirstItem,
+                      paginatedGeneral.indexOfLastItem
+                    )}
                   </Card.Body>
                 </Card>
               </Tab.Pane>
@@ -564,6 +785,7 @@ const InventarioMedicamentos = () => {
                       <i className="fas fa-exclamation-triangle me-2"></i>
                       Se muestran medicamentos cuyo stock actual es menor o igual al stock mínimo establecido.
                     </Alert>
+                    
                     <div className="table-responsive">
                       <Table hover>
                         <thead>
@@ -579,8 +801,8 @@ const InventarioMedicamentos = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {stockBajo.length > 0 ? (
-                            stockBajo.map((med) => {
+                          {paginatedStockBajo.items.length > 0 ? (
+                            paginatedStockBajo.items.map((med) => {
                               const stockActual = med.stock_actual || 0;
                               const stockMinimo = med.stock_minimo || 10;
                               const porcentajeStock = Math.min(100, Math.floor((stockActual / stockMinimo) * 100));
@@ -620,15 +842,29 @@ const InventarioMedicamentos = () => {
                           ) : (
                             <tr>
                               <td colSpan="8" className="text-center">
-                                <Alert variant="success" className="m-0">
-                                  No hay medicamentos con stock bajo
-                                </Alert>
+                                {searchTerm ? 
+                                  `No se encontraron medicamentos con stock bajo que coincidan con "${searchTerm}"` :
+                                  <Alert variant="success" className="m-0">
+                                    No hay medicamentos con stock bajo
+                                  </Alert>
+                                }
                               </td>
                             </tr>
                           )}
                         </tbody>
                       </Table>
                     </div>
+                    
+                    {renderPagination(
+                      pagStockBajo.current,
+                      paginatedStockBajo.totalPages,
+                      paginate,
+                      setPagStockBajo,
+                      pagStockBajo.itemsPerPage,
+                      filteredStockBajo.length,
+                      paginatedStockBajo.indexOfFirstItem,
+                      paginatedStockBajo.indexOfLastItem
+                    )}
                   </Card.Body>
                 </Card>
               </Tab.Pane>
@@ -641,6 +877,7 @@ const InventarioMedicamentos = () => {
                       <i className="fas fa-clock me-2"></i>
                       Se muestran lotes que caducarán en los próximos 90 días.
                     </Alert>
+                    
                     <div className="table-responsive">
                       <Table hover>
                         <thead>
@@ -654,18 +891,24 @@ const InventarioMedicamentos = () => {
                             <th>Días Restantes</th>
                             <th>Cantidad Inicial</th>
                             <th>Cantidad Disponible</th>
+                            <th>Stock Consumido</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {proximosVencer.length > 0 ? (
-                            proximosVencer.map((lote) => {
+                          {paginatedVencimiento.items.length > 0 ? (
+                            paginatedVencimiento.items.map((lote) => {
                               // Calcular días restantes
                               const fechaCaducidad = new Date(lote.fecha_caducidad);
                               const hoy = new Date();
                               const diferenciaTiempo = fechaCaducidad.getTime() - hoy.getTime();
                               const diasRestantes = Math.ceil(diferenciaTiempo / (1000 * 3600 * 24));
+
+                              // Calcular stock consumido
+                              const cantidadInicial = lote.cantidad_inicial || 0;
+                              const cantidadDisponible = lote.cantidad_disponible || 0;
+                              const stockConsumido = cantidadInicial - cantidadDisponible;
 
                               let badgeVariant = "warning";
                               if (diasRestantes <= 30) {
@@ -687,8 +930,9 @@ const InventarioMedicamentos = () => {
                                       {diasRestantes} días
                                     </Badge>
                                   </td>
-                                  <td>{lote.cantidad_inicial}</td>
-                                  <td>{lote.cantidad_disponible}</td>
+                                  <td>{cantidadInicial}</td>
+                                  <td>{cantidadDisponible}</td>
+                                  <td>{stockConsumido}</td>
                                   <td>
                                     <Badge bg="warning">
                                       Próximo a vencer
@@ -716,16 +960,30 @@ const InventarioMedicamentos = () => {
                             })
                           ) : (
                             <tr>
-                              <td colSpan="11" className="text-center">
-                                <Alert variant="success" className="m-0">
-                                  No hay lotes próximos a vencer
-                                </Alert>
+                              <td colSpan="12" className="text-center">
+                                {searchTerm ? 
+                                  `No se encontraron lotes próximos a vencer que coincidan con "${searchTerm}"` :
+                                  <Alert variant="success" className="m-0">
+                                    No hay lotes próximos a vencer
+                                  </Alert>
+                                }
                               </td>
                             </tr>
                           )}
                         </tbody>
                       </Table>
                     </div>
+                    
+                    {renderPagination(
+                      pagVencimiento.current,
+                      paginatedVencimiento.totalPages,
+                      paginate,
+                      setPagVencimiento,
+                      pagVencimiento.itemsPerPage,
+                      filteredVencimiento.length,
+                      paginatedVencimiento.indexOfFirstItem,
+                      paginatedVencimiento.indexOfLastItem
+                    )}
                   </Card.Body>
                 </Card>
               </Tab.Pane>
@@ -734,7 +992,6 @@ const InventarioMedicamentos = () => {
               <Tab.Pane eventKey="lotes">
                 <Card>
                   <Card.Body>
-                    {/* Filtros de lotes - Ahora solo con botón para lotes agotados */}
                     <Row className="mb-3">
                       <Col md={12} className="text-end">
                         <Button
@@ -757,15 +1014,17 @@ const InventarioMedicamentos = () => {
                             <th>Medicamento</th>
                             <th>Fecha Fabricación</th>
                             <th>Fecha Caducidad</th>
+                            <th>Cantidad Inicial</th>
                             <th>Cantidad Disponible</th>
+                            <th>Stock Consumido</th>
                             <th>Fecha Ingreso</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredLotesWithoutSearch.length > 0 ? (
-                            filteredLotesWithoutSearch.map((lote) => {
+                          {paginatedLotes.items.length > 0 ? (
+                            paginatedLotes.items.map((lote) => {
                               let badgeVariant = "success";
                               let estadoTexto = "Activo";
 
@@ -788,6 +1047,11 @@ const InventarioMedicamentos = () => {
                                 estadoTexto = "Próximo a vencer";
                               }
 
+                              // Calcular cantidad consumida
+                              const cantidadInicial = lote.cantidad_inicial || 0;
+                              const cantidadDisponible = lote.cantidad_disponible || 0;
+                              const cantidadConsumida = cantidadInicial - cantidadDisponible;
+
                               return (
                                 <tr key={lote.id_stock}>
                                   <td>{lote.id_stock}</td>
@@ -799,7 +1063,9 @@ const InventarioMedicamentos = () => {
                                   <td>
                                     {new Date(lote.fecha_caducidad).toLocaleDateString('es-ES')}
                                   </td>
-                                  <td>{lote.cantidad_disponible}</td>
+                                  <td>{cantidadInicial}</td>
+                                  <td>{cantidadDisponible}</td>
+                                  <td>{cantidadConsumida}</td>
                                   <td>
                                     {new Date(lote.fecha_ingreso).toLocaleString('es-ES')}
                                   </td>
@@ -832,14 +1098,28 @@ const InventarioMedicamentos = () => {
                             })
                           ) : (
                             <tr>
-                              <td colSpan="9" className="text-center">
-                                No se encontraron lotes
+                              <td colSpan="11" className="text-center">
+                                {searchTerm ? 
+                                  `No se encontraron lotes que coincidan con "${searchTerm}"` :
+                                  "No se encontraron lotes"
+                                }
                               </td>
                             </tr>
                           )}
                         </tbody>
                       </Table>
                     </div>
+                    
+                    {renderPagination(
+                      pagLotes.current,
+                      paginatedLotes.totalPages,
+                      paginate,
+                      setPagLotes,
+                      pagLotes.itemsPerPage,
+                      filteredLotes.length,
+                      paginatedLotes.indexOfFirstItem,
+                      paginatedLotes.indexOfLastItem
+                    )}
                   </Card.Body>
                 </Card>
               </Tab.Pane>
