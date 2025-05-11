@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, InputGroup, FormControl, Row, Button, Modal } from 'react-bootstrap';
 import DataTable from 'react-data-table-component';
-import { listarExamenesCompletadosService, mostrarResultadosExamenService, obtenerResultadosPorPacienteService } from 'services/examenService';
+import { listarExamenesCompletadosService, mostrarResultadosExamenService } from 'services/examenService';
 import Card from '../../components/Card/MainCard';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';

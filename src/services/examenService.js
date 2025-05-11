@@ -141,15 +141,58 @@ export const marcarPacienteComoInactivoService = {
     }
 };
 
-export const obtenerResultadosPorPacienteService = {
-    getResultadosPorPaciente: async (id_paciente, id_examen) => {
+
+export const listarUltimosExamenesService = {
+    getUltimosExamenes: async () => {
         try {
-            const response = await axios.get(`${baseUrl}/examen-pdf/${id_paciente}/${id_examen}`, {
+            const response = await axios.get(`${baseUrl}/listar-ultimos-examenes`, {
                 withCredentials: true
             });
             return response.data;
         } catch (error) {
-            console.error('Error al obtener los resultados por paciente:', error);
+            console.error('Error al obtener los últimos exámenes:', error);
+            throw error;
+        }
+    },
+};
+
+export const contarExamenesPendientesService = {
+    contarExamenesPendientes: async () => {
+        try {
+            const response = await axios.get(`${baseUrl}/contar-examenes-pendientes`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al contar los exámenes pendientes:', error);
+            throw error;
+        }
+    },
+};
+
+export const contarExamenesCompletadosService = {
+    contarExamenesCompletados: async () => {
+        try {
+            const response = await axios.get(`${baseUrl}/contar-examenes-completados`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al contar los exámenes completados:', error);
+            throw error;
+        }
+    },
+};
+
+export const contarPacientesConExamenService = {
+    contarPacientesConExamen: async () => {
+        try {
+            const response = await axios.get(`${baseUrl}/pacientes-con-examen`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al contar los pacientes con exámenes:', error);
             throw error;
         }
     },
