@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Tab, Nav, Button, Table, Badge, Alert, Pagination, InputGroup, FormControl } from 'react-bootstrap';
+import { Row, Col, Card, Tab, Nav, Button, Table, Badge, Alert, Pagination, InputGroup, FormControl, Form } from 'react-bootstrap';
 import MainCard from '../../components/Card/MainCard';
 import { despachoService } from '../../services/despachoService';
 import { notificacionesService } from '../../services/notificacionesService';
@@ -24,16 +24,33 @@ const DespachoMedicamentos = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
 
+    // Estado para filtros
+    const [filtros, setFiltros] = useState({
+        estado: '',
+        fechaInicio: '',
+        fechaFin: ''
+    });
+
     // Cargar datos iniciales
     useEffect(() => {
         cargarDatos();
     }, []);
 
+    // Cargar historial cuando cambia el tab o la página
     useEffect(() => {
         if (activeTab === 'historial') {
             cargarHistorial(currentPage);
         }
     }, [activeTab, currentPage]);
+
+    // Recargar historial cuando cambian los filtros
+    useEffect(() => {
+        if (activeTab === 'historial') {
+            // Resetear a la primera página cuando cambian los filtros
+            setCurrentPage(1);
+            cargarHistorial(1);
+        }
+    }, [filtros]);
 
     const cargarDatos = async () => {
         try {
@@ -62,7 +79,8 @@ const DespachoMedicamentos = () => {
 
     const cargarHistorial = async (page) => {
         try {
-            const response = await despachoService.listarHistorialDespachos(page, 10);
+            setLoading(true);
+            const response = await despachoService.listarHistorialDespachos(page, 10, filtros);
             if (response.success) {
                 setHistorialDespachos(response.data);
                 setTotalPages(response.pagination.totalPages);
@@ -71,6 +89,8 @@ const DespachoMedicamentos = () => {
         } catch (err) {
             console.error("Error al cargar historial:", err);
             setError("Error al cargar el historial de despachos.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -100,13 +120,34 @@ const DespachoMedicamentos = () => {
         }
     };
 
+    const limpiarFiltros = () => {
+        setFiltros({
+            estado: '',
+            fechaInicio: '',
+            fechaFin: ''
+        });
+    };
+
     const filteredRecetas = recetasPendientes.filter(receta =>
         receta.nombre_paciente.toLowerCase().includes(searchTerm.toLowerCase()) ||
         receta.nombre_medico.toLowerCase().includes(searchTerm.toLowerCase()) ||
         receta.id_receta.toString().includes(searchTerm)
     );
 
-    if (loading) {
+    const getBadgeVariant = (estado) => {
+        switch (estado?.toLowerCase()) {
+            case 'completo':
+                return 'success';
+            case 'parcial':
+                return 'warning';
+            case 'cancelado':
+                return 'danger';
+            default:
+                return 'secondary';
+        }
+    };
+
+    if (loading && historialDespachos.length === 0 && recetasPendientes.length === 0) {
         return (
             <MainCard title="Despacho de Medicamentos">
                 <div className="text-center">
@@ -118,7 +159,7 @@ const DespachoMedicamentos = () => {
         );
     }
 
-    if (error) {
+    if (error && historialDespachos.length === 0 && recetasPendientes.length === 0) {
         return (
             <MainCard title="Despacho de Medicamentos">
                 <Alert variant="danger">{error}</Alert>
@@ -212,6 +253,65 @@ const DespachoMedicamentos = () => {
                     <Tab.Pane eventKey="historial">
                         <Card>
                             <Card.Body>
+                                {/* Filtros */}
+                                <Row className="mb-3">
+                                    <Col md={3}>
+                                        <Form.Group>
+                                            <Form.Label>Estado</Form.Label>
+                                            <Form.Select
+                                                value={filtros.estado}
+                                                onChange={(e) => setFiltros({...filtros, estado: e.target.value})}
+                                            >
+                                                <option value="">Todos los estados</option>
+                                                <option value="completo">Completo</option>
+                                                <option value="parcial">Parcial</option>
+                                                <option value="cancelado">Cancelado</option>
+                                            </Form.Select>
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={3}>
+                                        <Form.Group>
+                                            <Form.Label>Fecha Inicio</Form.Label>
+                                            <Form.Control
+                                                type="date"
+                                                value={filtros.fechaInicio}
+                                                onChange={(e) => setFiltros({...filtros, fechaInicio: e.target.value})}
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={3}>
+                                        <Form.Group>
+                                            <Form.Label>Fecha Fin</Form.Label>
+                                            <Form.Control
+                                                type="date"
+                                                value={filtros.fechaFin}
+                                                onChange={(e) => setFiltros({...filtros, fechaFin: e.target.value})}
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={3} className="d-flex align-items-end">
+                                        <Button 
+                                            variant="secondary" 
+                                            onClick={limpiarFiltros}
+                                            className="w-100"
+                                        >
+                                            <i className="fas fa-eraser me-1"></i> Limpiar Filtros
+                                        </Button>
+                                    </Col>
+                                </Row>
+
+                                {loading && (
+                                    <div className="text-center py-3">
+                                        <div className="spinner-border text-primary" role="status">
+                                            <span className="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {error && (
+                                    <Alert variant="danger" className="mb-3">{error}</Alert>
+                                )}
+
                                 <div className="table-responsive">
                                     <Table hover>
                                         <thead>
@@ -234,11 +334,16 @@ const DespachoMedicamentos = () => {
                                                         <td>{new Date(despacho.fecha_despacho).toLocaleString('es-ES')}</td>
                                                         <td>#{despacho.id_receta}</td>
                                                         <td>{despacho.nombre_paciente}</td>
-                                                        <td>{despacho.medicamentos}</td>
+                                                        <td>
+                                                            <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={despacho.medicamentos}>
+                                                                {despacho.medicamentos}
+                                                            </div>
+                                                        </td>
                                                         <td>{despacho.nombre_despachador}</td>
                                                         <td>
-                                                            <Badge bg={despacho.estado_despacho === 'completo' ? 'success' : 'warning'}>
-                                                                {despacho.estado_despacho}
+                                                            <Badge bg={getBadgeVariant(despacho.estado_despacho)}>
+                                                                {despacho.estado_despacho === 'completo' ? 'Completo' : 
+                                                                 despacho.estado_despacho === 'parcial' ? 'Parcial' : 'Cancelado'}
                                                             </Badge>
                                                         </td>
                                                         <td>
@@ -255,7 +360,7 @@ const DespachoMedicamentos = () => {
                                             ) : (
                                                 <tr>
                                                     <td colSpan="8" className="text-center">
-                                                        No hay despachos registrados
+                                                        {!loading ? 'No hay despachos que coincidan con los filtros aplicados' : 'Cargando...'}
                                                     </td>
                                                 </tr>
                                             )}

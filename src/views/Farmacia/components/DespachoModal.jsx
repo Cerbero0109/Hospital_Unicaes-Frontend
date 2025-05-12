@@ -259,8 +259,11 @@ const DespachoModal = ({ show, onHide, receta, onDespachoCompletado }) => {
                     <Form.Select 
                       value={tipoDespacho}
                       onChange={(e) => setTipoDespacho(e.target.value)}
+                      className={tipoDespacho === 'parcial' || tipoDespacho === 'cancelado' ? 'text-warning' : ''}
                     >
-                      <option value="completo" disabled={!haySuficienteStock}>Despacho Completo</option>
+                      <option value="completo" disabled={!haySuficienteStock}>
+                        {haySuficienteStock ? 'Despacho Completo' : 'Despacho Completo (No disponible)'}
+                      </option>
                       <option value="parcial">Despacho Parcial</option>
                       <option value="cancelado">Cancelar Despacho</option>
                     </Form.Select>
@@ -335,62 +338,72 @@ const DespachoModal = ({ show, onHide, receta, onDespachoCompletado }) => {
                       <Badge bg={
                         tipoDespacho === 'completo' ? 'success' : 
                         tipoDespacho === 'parcial' ? 'warning' : 'danger'
-                      } className="fs-6 mb-3">
+                      } className="fs-6 mb-3 px-4 py-2">
                         {tipoDespacho === 'completo' ? 'Despacho Completo' : 
                          tipoDespacho === 'parcial' ? 'Despacho Parcial' : 'Despacho Cancelado'}
                       </Badge>
                     </div>
 
                     {tipoDespacho === 'cancelado' ? (
-                      <div>
-                        <strong>Razón de Cancelación:</strong>
-                        <p>{razonCancelacion}</p>
+                      <div className="mb-3">
+                        <h6>Razón de Cancelación:</h6>
+                        <div className="p-3 bg-light rounded">{razonCancelacion}</div>
                       </div>
                     ) : (
-                      <Table hover className="border">
-                        <thead className="bg-light">
-                          <tr>
-                            <th>Medicamento</th>
-                            <th>Cantidad Requerida</th>
-                            <th>Cantidad a Despachar</th>
-                            <th>Lotes Seleccionados</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {medicamentos.map((medicamento) => {
-                            const lotesDelMedicamento = lotesSeleccionados[medicamento.id_detalle_receta] || [];
-                            const totalSeleccionado = calcularTotalSeleccionado(medicamento.id_detalle_receta);
-                            return (
-                              <tr key={medicamento.id_detalle_receta}>
-                                <td>{medicamento.nombre_medicamento}</td>
-                                <td>{medicamento.cantidad}</td>
-                                <td>
-                                  <Badge bg={
-                                    totalSeleccionado === 0 ? 'danger' :
-                                    totalSeleccionado < medicamento.cantidad ? 'warning' : 'success'
-                                  }>
-                                    {totalSeleccionado}
-                                  </Badge>
-                                </td>
-                                <td>
-                                  {lotesDelMedicamento.length > 0 ? (
-                                    lotesDelMedicamento.map(lote => (
-                                      <div key={lote.id_stock} className="mb-1">
-                                        <strong>{lote.numero_lote}</strong> - {lote.cantidad} unidades
-                                        <small className="ms-2 text-muted">
-                                          (Vence: {new Date(lote.fecha_caducidad).toLocaleDateString('es-ES')})
-                                        </small>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <span className="text-muted">Ningún lote seleccionado</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </Table>
+                      <>
+                        {tipoDespacho === 'parcial' && (
+                          <Alert variant="warning" className="mb-3">
+                            <i className="fas fa-exclamation-triangle me-2"></i>
+                            Está realizando un despacho parcial. No se entregarán todos los medicamentos prescritos.
+                          </Alert>
+                        )}
+                        <Table hover className="border">
+                          <thead className="bg-light">
+                            <tr>
+                              <th>Medicamento</th>
+                              <th>Cantidad Requerida</th>
+                              <th>Cantidad a Despachar</th>
+                              <th>Lotes Seleccionados</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {medicamentos.map((medicamento) => {
+                              const lotesDelMedicamento = lotesSeleccionados[medicamento.id_detalle_receta] || [];
+                              const totalSeleccionado = calcularTotalSeleccionado(medicamento.id_detalle_receta);
+                              const cantidadFaltante = medicamento.cantidad - totalSeleccionado;
+                              
+                              return (
+                                <tr key={medicamento.id_detalle_receta} className={cantidadFaltante > 0 ? 'table-warning' : ''}>
+                                  <td>{medicamento.nombre_medicamento}</td>
+                                  <td>{medicamento.cantidad}</td>
+                                  <td>
+                                    <Badge bg={
+                                      totalSeleccionado === 0 ? 'danger' :
+                                      totalSeleccionado < medicamento.cantidad ? 'warning' : 'success'
+                                    }>
+                                      {totalSeleccionado} {cantidadFaltante > 0 && `(Faltan ${cantidadFaltante})`}
+                                    </Badge>
+                                  </td>
+                                  <td>
+                                    {lotesDelMedicamento.length > 0 ? (
+                                      lotesDelMedicamento.map(lote => (
+                                        <div key={lote.id_stock} className="mb-1">
+                                          <strong>{lote.numero_lote}</strong> - {lote.cantidad} unidades
+                                          <small className="ms-2 text-muted">
+                                            (Vence: {new Date(lote.fecha_caducidad).toLocaleDateString('es-ES')})
+                                          </small>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <span className="text-muted">Ningún lote seleccionado</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </Table>
+                      </>
                     )}
 
                     <div className="mt-4">
@@ -436,7 +449,12 @@ const DespachoModal = ({ show, onHide, receta, onDespachoCompletado }) => {
               onClick={handleConfirmarDespacho}
               disabled={procesando}
             >
-              {procesando ? 'Procesando...' : (
+              {procesando ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Procesando...
+                </>
+              ) : (
                 tipoDespacho === 'cancelado' ? 'Confirmar Cancelación' : 
                 tipoDespacho === 'parcial' ? 'Confirmar Despacho Parcial' : 'Confirmar Despacho'
               )}

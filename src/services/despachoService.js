@@ -51,10 +51,23 @@ export const despachoService = {
     }
   },
 
-  listarHistorialDespachos: async (page = 1, limit = 10) => {
+  cancelarDespacho: async (cancelacionData) => {
     try {
+      const response = await axios.post(`${baseUrl}/cancelar`, cancelacionData, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al cancelar despacho:', error);
+      throw error;
+    }
+  },
+
+  listarHistorialDespachos: async (page = 1, limit = 10, filtros = {}) => {
+    try {
+      const params = { page, limit, ...filtros };
       const response = await axios.get(`${baseUrl}/historial`, {
-        params: { page, limit },
+        params,
         withCredentials: true
       });
       return response.data;
