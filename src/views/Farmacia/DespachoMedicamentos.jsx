@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Tab, Nav, Button, Table, Badge, Alert, Pagination, InputGroup, FormControl, Form } from 'react-bootstrap';
+import { Row, Col, Card, Tab, Nav, Button, Table, Badge, Alert, InputGroup, FormControl, Form } from 'react-bootstrap';
 import MainCard from '../../components/Card/MainCard';
 import { despachoService } from '../../services/despachoService';
 import { notificacionesService } from '../../services/notificacionesService';
@@ -19,10 +19,10 @@ const DespachoMedicamentos = () => {
     const [despachoSeleccionado, setDespachoSeleccionado] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Estados para paginación
+    // Estados para paginación del historial
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalItems, setTotalItems] = useState(0);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [searchHistorial, setSearchHistorial] = useState('');
 
     // Estado para filtros
     const [filtros, setFiltros] = useState({
@@ -36,19 +36,19 @@ const DespachoMedicamentos = () => {
         cargarDatos();
     }, []);
 
-    // Cargar historial cuando cambia el tab o la página
+    // Cargar historial cuando cambia el tab
     useEffect(() => {
         if (activeTab === 'historial') {
-            cargarHistorial(currentPage);
+            cargarHistorial();
         }
-    }, [activeTab, currentPage]);
+    }, [activeTab]);
 
     // Recargar historial cuando cambian los filtros
     useEffect(() => {
         if (activeTab === 'historial') {
             // Resetear a la primera página cuando cambian los filtros
             setCurrentPage(1);
-            cargarHistorial(1);
+            cargarHistorial();
         }
     }, [filtros]);
 
@@ -66,7 +66,7 @@ const DespachoMedicamentos = () => {
             // Obtener notificaciones
             const notificacionesResponse = await notificacionesService.obtenerNotificaciones();
             if (notificacionesResponse.success) {
-                // Aquí podrías manejar las notificaciones si es necesario
+                // Aquí manejar las notificaciones si es necesario
             }
 
         } catch (err) {
@@ -77,14 +77,13 @@ const DespachoMedicamentos = () => {
         }
     };
 
-    const cargarHistorial = async (page) => {
+    const cargarHistorial = async () => {
         try {
             setLoading(true);
-            const response = await despachoService.listarHistorialDespachos(page, 10, filtros);
+            // Cargar todos los registros para hacer paginación local
+            const response = await despachoService.listarHistorialDespachos(1, 1000, filtros);
             if (response.success) {
                 setHistorialDespachos(response.data);
-                setTotalPages(response.pagination.totalPages);
-                setTotalItems(response.pagination.total);
             }
         } catch (err) {
             console.error("Error al cargar historial:", err);
@@ -116,7 +115,7 @@ const DespachoMedicamentos = () => {
         setShowDespachoModal(false);
         cargarDatos();
         if (activeTab === 'historial') {
-            cargarHistorial(currentPage);
+            cargarHistorial();
         }
     };
 
@@ -126,6 +125,8 @@ const DespachoMedicamentos = () => {
             fechaInicio: '',
             fechaFin: ''
         });
+        setSearchHistorial('');
+        setCurrentPage(1);
     };
 
     const filteredRecetas = recetasPendientes.filter(receta =>
@@ -133,6 +134,121 @@ const DespachoMedicamentos = () => {
         receta.nombre_medico.toLowerCase().includes(searchTerm.toLowerCase()) ||
         receta.id_receta.toString().includes(searchTerm)
     );
+
+    // Filtrar historial con buscador
+    const filteredHistorial = historialDespachos.filter(despacho => {
+        const matchesSearch = (
+            String(despacho.id_despacho || '').toLowerCase().includes(searchHistorial.toLowerCase()) ||
+            String(despacho.id_receta || '').toLowerCase().includes(searchHistorial.toLowerCase()) ||
+            String(despacho.nombre_paciente || '').toLowerCase().includes(searchHistorial.toLowerCase()) ||
+            String(despacho.nombre_despachador || '').toLowerCase().includes(searchHistorial.toLowerCase()) ||
+            String(despacho.medicamentos || '').toLowerCase().includes(searchHistorial.toLowerCase())
+        );
+        return matchesSearch;
+    });
+
+    // Cálculos para paginación del historial
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentHistorial = filteredHistorial.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredHistorial.length / itemsPerPage);
+
+    // Función para cambiar de página
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+    // Renderizar paginación
+    const renderPagination = () => {
+        const pageNumbers = [];
+        const maxPagesToShow = 5;
+        
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        
+        if (endPage - startPage + 1 < maxPagesToShow) {
+            startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.push(i);
+        }
+        
+        return (
+            <div className="d-flex justify-content-between align-items-center mt-3">
+                <div className="text-muted">
+                    Mostrando {filteredHistorial.length === 0 ? 0 : Math.min(indexOfFirstItem + 1, filteredHistorial.length)} - {Math.min(indexOfLastItem, filteredHistorial.length)} de {filteredHistorial.length} registros
+                </div>
+                
+                <div className="d-flex align-items-center">
+                    <div className="me-3">
+                        <Form.Select 
+                            size="sm" 
+                            value={itemsPerPage}
+                            onChange={(e) => {
+                                setItemsPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                        >
+                            <option value="5">5 por página</option>
+                            <option value="10">10 por página</option>
+                            <option value="25">25 por página</option>
+                            <option value="50">50 por página</option>
+                        </Form.Select>
+                    </div>
+                    
+                    <ul className="pagination pagination-sm mb-0">
+                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                            <button
+                                onClick={() => paginate(1)}
+                                className="page-link"
+                                disabled={currentPage === 1}
+                            >
+                                &laquo;
+                            </button>
+                        </li>
+                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                            <button
+                                onClick={() => paginate(currentPage - 1)}
+                                className="page-link"
+                                disabled={currentPage === 1}
+                            >
+                                &lt;
+                            </button>
+                        </li>
+                        
+                        {pageNumbers.map(number => (
+                            <li key={number} className={`page-item ${currentPage === number ? 'active' : ''}`}>
+                                <button
+                                    onClick={() => paginate(number)}
+                                    className="page-link"
+                                >
+                                    {number}
+                                </button>
+                            </li>
+                        ))}
+                        
+                        <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+                            <button
+                                onClick={() => paginate(currentPage + 1)}
+                                className="page-link"
+                                disabled={currentPage === totalPages || totalPages === 0}
+                            >
+                                &gt;
+                            </button>
+                        </li>
+                        <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+                            <button
+                                onClick={() => paginate(totalPages)}
+                                className="page-link"
+                                disabled={currentPage === totalPages || totalPages === 0}
+                            >
+                                &raquo;
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        );
+    };
 
     const getBadgeVariant = (estado) => {
         switch (estado?.toLowerCase()) {
@@ -269,7 +385,7 @@ const DespachoMedicamentos = () => {
                                             </Form.Select>
                                         </Form.Group>
                                     </Col>
-                                    <Col md={3}>
+                                    <Col md={2}>
                                         <Form.Group>
                                             <Form.Label>Fecha Inicio</Form.Label>
                                             <Form.Control
@@ -279,7 +395,7 @@ const DespachoMedicamentos = () => {
                                             />
                                         </Form.Group>
                                     </Col>
-                                    <Col md={3}>
+                                    <Col md={2}>
                                         <Form.Group>
                                             <Form.Label>Fecha Fin</Form.Label>
                                             <Form.Control
@@ -289,13 +405,31 @@ const DespachoMedicamentos = () => {
                                             />
                                         </Form.Group>
                                     </Col>
-                                    <Col md={3} className="d-flex align-items-end">
+                                    <Col md={3}>
+                                        <Form.Group>
+                                            <Form.Label>Buscar</Form.Label>
+                                            <InputGroup>
+                                                <InputGroup.Text>
+                                                    <i className="fas fa-search"></i>
+                                                </InputGroup.Text>
+                                                <FormControl
+                                                    placeholder="Buscar en historial..."
+                                                    value={searchHistorial}
+                                                    onChange={(e) => {
+                                                        setSearchHistorial(e.target.value);
+                                                        setCurrentPage(1);
+                                                    }}
+                                                />
+                                            </InputGroup>
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={2} className="d-flex align-items-end">
                                         <Button 
                                             variant="secondary" 
                                             onClick={limpiarFiltros}
                                             className="w-100"
                                         >
-                                            <i className="fas fa-eraser me-1"></i> Limpiar Filtros
+                                            <i className="fas fa-eraser me-1"></i> Limpiar
                                         </Button>
                                     </Col>
                                 </Row>
@@ -327,8 +461,8 @@ const DespachoMedicamentos = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {historialDespachos.length > 0 ? (
-                                                historialDespachos.map((despacho) => (
+                                            {currentHistorial.length > 0 ? (
+                                                currentHistorial.map((despacho) => (
                                                     <tr key={despacho.id_despacho}>
                                                         <td>{despacho.id_despacho}</td>
                                                         <td>{new Date(despacho.fecha_despacho).toLocaleString('es-ES')}</td>
@@ -360,7 +494,12 @@ const DespachoMedicamentos = () => {
                                             ) : (
                                                 <tr>
                                                     <td colSpan="8" className="text-center">
-                                                        {!loading ? 'No hay despachos que coincidan con los filtros aplicados' : 'Cargando...'}
+                                                        {!loading ? 
+                                                            (searchHistorial || filtros.estado || filtros.fechaInicio || filtros.fechaFin
+                                                                ? 'No se encontraron despachos con los criterios de búsqueda'
+                                                                : 'No hay despachos registrados') 
+                                                            : 'Cargando...'
+                                                        }
                                                     </td>
                                                 </tr>
                                             )}
@@ -369,57 +508,7 @@ const DespachoMedicamentos = () => {
                                 </div>
 
                                 {/* Paginación */}
-                                {totalPages > 1 && (
-                                    <div className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            Mostrando {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalItems)} de {totalItems} registros
-                                        </div>
-                                        <Pagination>
-                                            <Pagination.First
-                                                onClick={() => setCurrentPage(1)}
-                                                disabled={currentPage === 1}
-                                            />
-                                            <Pagination.Prev
-                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                                disabled={currentPage === 1}
-                                            />
-
-                                            {[...Array(totalPages)].map((_, index) => {
-                                                const pageNumber = index + 1;
-                                                if (
-                                                    pageNumber === 1 ||
-                                                    pageNumber === totalPages ||
-                                                    (pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2)
-                                                ) {
-                                                    return (
-                                                        <Pagination.Item
-                                                            key={pageNumber}
-                                                            active={pageNumber === currentPage}
-                                                            onClick={() => setCurrentPage(pageNumber)}
-                                                        >
-                                                            {pageNumber}
-                                                        </Pagination.Item>
-                                                    );
-                                                } else if (
-                                                    pageNumber === currentPage - 3 ||
-                                                    pageNumber === currentPage + 3
-                                                ) {
-                                                    return <Pagination.Ellipsis key={pageNumber} />;
-                                                }
-                                                return null;
-                                            })}
-
-                                            <Pagination.Next
-                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                                disabled={currentPage === totalPages}
-                                            />
-                                            <Pagination.Last
-                                                onClick={() => setCurrentPage(totalPages)}
-                                                disabled={currentPage === totalPages}
-                                            />
-                                        </Pagination>
-                                    </div>
-                                )}
+                                {filteredHistorial.length > 0 && renderPagination()}
                             </Card.Body>
                         </Card>
                     </Tab.Pane>

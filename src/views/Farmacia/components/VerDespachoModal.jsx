@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Table, Badge, Card, Row, Col, ProgressBar, Alert } from 'react-bootstrap';
 import { despachoService } from '../../../services/despachoService';
 import jsPDF from 'jspdf';
-import logoUnicaes from '../../../assets/images/UNICAES_LOGO.png'; // Asegúrate de que la ruta sea correcta
-import 'jspdf-autotable'; // Necesitarás instalar esta dependencia
+import logoUnicaes from '../../../assets/images/UNICAES_LOGO.png';
+import 'jspdf-autotable';
 
 const VerDespachoModal = ({ show, onHide, despacho }) => {
   // Estado para almacenar detalles completos de la receta original
@@ -141,7 +141,7 @@ const VerDespachoModal = ({ show, onHide, despacho }) => {
     });
   };
 
-  // NUEVA FUNCIÓN: Generar PDF con jsPDF
+  //Generar PDF con jsPDF 
   const generarPDF = async () => {
     if (!despacho) return;
 
@@ -255,7 +255,9 @@ const VerDespachoModal = ({ show, onHide, despacho }) => {
         doc.setTextColor(0, 0, 0); // Restaurar color
       }
 
-      // Tabla de medicamentos despachados
+      // SECCIÓN: Tabla de medicamentos
+
+      // Para despachos NO cancelados: mostrar medicamentos despachados
       if (despacho.estado !== 'cancelado' && despacho.detalles && despacho.detalles.length > 0) {
         doc.setFont("helvetica", "bold");
         doc.text("Medicamentos Despachados:", margenLateral, yPos);
@@ -313,6 +315,61 @@ const VerDespachoModal = ({ show, onHide, despacho }) => {
             4: { cellWidth: 20 },
             5: { cellWidth: 'auto' }
           },
+        });
+
+        // Actualizar la posición Y después de la tabla
+        yPos = doc.autoTable.previous.finalY + 10;
+      }
+
+      // SECCIÓN: Para despachos CANCELADOS - mostrar medicamentos de la receta original
+    
+      if (despacho.estado === 'cancelado' && recetaOriginal && recetaOriginal.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(200, 0, 0); // Color rojo para cancelados
+        doc.text("Medicamentos de la Receta (Cancelados):", margenLateral, yPos);
+        doc.setTextColor(0, 0, 0); // Restaurar color
+
+        yPos += 8;
+
+        // Crear tabla para medicamentos cancelados
+        const tableCanceladosColumn = ["Medicamento", "Concentración", "Cantidad Requerida", "Estado"];
+        const tableCanceladosRows = [];
+
+        recetaOriginal.forEach(medicamento => {
+          tableCanceladosRows.push([
+            medicamento.nombre_medicamento,
+            medicamento.concentracion || "-",
+            medicamento.cantidad.toString(),
+            "No Despachado"
+          ]);
+        });
+
+        doc.autoTable({
+          head: [tableCanceladosColumn],
+          body: tableCanceladosRows,
+          startY: yPos,
+          margin: { left: margenLateral, right: margenLateral },
+          styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak',
+            lineColor: [0, 0, 0],
+            lineWidth: 0.1,
+          },
+          headStyles: {
+            fillColor: [220, 53, 69], // Color rojo para cancelados
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+          },
+          columnStyles: {
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 30 }
+          },
+          bodyStyles: {
+            3: { textColor: [220, 53, 69], fontStyle: 'bold' } // Columna "Estado" en rojo
+          }
         });
 
         // Actualizar la posición Y después de la tabla
