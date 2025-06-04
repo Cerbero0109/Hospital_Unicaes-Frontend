@@ -153,7 +153,12 @@ const routes = [
 ];
 
 const RenderRoutes = ({ routes }) => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // Mostrar loading mientras se carga la información del usuario
+  if (loading) {
+    return <Loader />;
+  }
 
   return (
     <Suspense fallback={<Loader />}>
@@ -163,9 +168,13 @@ const RenderRoutes = ({ routes }) => {
           const Layout = route.layout || React.Fragment;
           const Element = route.element;
 
-          // Validación de roles
-          if (route.roles && (!user || !route.roles.includes(user.rol))) {
-            return null; // No renderiza la ruta si el usuario no tiene el rol adecuado
+          // Validación de roles mejorada
+          if (route.roles) {
+            // Si la ruta requiere roles específicos
+            if (!user || !route.roles.includes(user.rol)) {
+              // Si no hay usuario o no tiene el rol adecuado, no renderizar esta ruta
+              return null;
+            }
           }
 
           return (
