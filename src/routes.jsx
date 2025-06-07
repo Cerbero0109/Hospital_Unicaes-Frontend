@@ -32,7 +32,7 @@ const routes = [
         exact: true,
         guard: AuthGuard,
         element: lazy(() => import('./views/pacientes_archivo/index_archivo_form')),
-        roles: ['Administrador', 'Médico', 'Enfermero', 'Laboratorista', 'Farmacia']
+        roles: ['Administrador', 'Médico', 'Enfermero', 'Laboratorista', 'Jefe de Farmacia', 'Despachador de Medicamentos']
       },
       {
         //rutas del administrador
@@ -134,14 +134,14 @@ const routes = [
         exact: true,
         guard: AuthGuard,
         element: lazy(() => import('./views/Farmacia/InventarioMedicamentos')),
-        roles: ['Farmacia']
+        roles: ['Jefe de Farmacia']
       },
       {
         path: '/despacho-medicamentos',
         exact: true,
         guard: AuthGuard,
         element: lazy(() => import('./views/Farmacia/DespachoMedicamentos')),
-        roles: ['Farmacia']
+        roles: ['Jefe de Farmacia', 'Despachador de Medicamentos']
       },
       {
         path: '*',

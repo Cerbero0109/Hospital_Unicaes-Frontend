@@ -497,11 +497,11 @@ const MedicamentoModal = ({ show, onHide, medicamento, categorias = [], presenta
                   className="me-2"
                 />
                 <label htmlFor="requiere-receta-check" className="form-check-label mb-0">
-                  <strong>¿Requiere receta médica?</strong>
+                  <strong>¿Requiere receta médica controlada?</strong>
                 </label>
               </div>
               <small className="text-muted mt-2">
-                Marque esta casilla si el medicamento requiere receta médica para ser dispensado. 
+                Marque esta casilla si el medicamento requiere receta médica controlada para ser dispensado. 
               </small>
             </div>
           </Form.Group>

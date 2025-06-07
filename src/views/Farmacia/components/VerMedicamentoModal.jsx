@@ -490,7 +490,7 @@ const VerMedicamentoModal = ({ show, onHide, medicamento, onAddLote, onEdit }) =
                   <div className="info-item">
                     <div className="info-label">
                       <i className="fas fa-prescription me-2"></i>
-                      Requiere Receta
+                       Requiere Receta Médica Controlada
                     </div>
                     <div className="info-value">
                       <Badge bg={medicamento.requiere_receta ? "info" : "secondary"} pill>

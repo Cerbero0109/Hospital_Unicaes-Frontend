@@ -86,7 +86,7 @@ export const stockService = {
       throw error;
     }
   },
-  
+
   listarLotesAgotados: async () => {
     try {
       const response = await axios.get(`${baseUrl}/lotes-agotados`, {
@@ -98,7 +98,7 @@ export const stockService = {
       throw error;
     }
   },
-  
+
   listarIngresosMedicamentos: async () => {
     try {
       const response = await axios.get(`${baseUrl}/ingresos`, {
@@ -109,5 +109,17 @@ export const stockService = {
       console.error('Error al listar los ingresos de medicamentos:', error);
       throw error;
     }
+  },
+  listarLotesVencidos: async () => {
+    try {
+      const response = await axios.get(`${baseUrl}/lotes-vencidos`, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al listar los lotes vencidos:', error);
+      throw error;
+    }
   }
+
 };

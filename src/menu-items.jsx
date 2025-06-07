@@ -13,7 +13,7 @@ const menuItems = {
           type: 'item',
           icon: 'feather icon-home',
           url: '/dashboard',
-          roles: ['Administrador', 'Médico', 'Enfermero', 'Laboratorista', 'Farmacia']
+          roles: ['Administrador', 'Médico', 'Enfermero', 'Laboratorista', 'Jefe de Farmacia', 'Despachador de Medicamentos']
         }
       ]
     },
@@ -137,7 +137,7 @@ const menuItems = {
           url: '/inventario-medicamentos', 
           classes: 'nav-item',
           icon: 'feather icon-package',
-          roles: ['Farmacia'] // Solo el rol Farmacia puede ver esta opción
+          roles: ['Jefe de Farmacia'] // Solo el rol Jefe de Farmacia puede ver esta opción
         },
         {
           id: 'v_despacho',  
@@ -146,7 +146,7 @@ const menuItems = {
           url: '/despacho-medicamentos',  
           classes: 'nav-item',
           icon: 'fas fa-capsules',
-          roles: ['Farmacia'] // Solo el rol Farmacia puede ver esta opción
+          roles: ['Jefe de Farmacia', 'Despachador de Medicamentos'] // Solo el rol Jefe de Farmacia y Despachador de Medicamentos pueden ver esta opción
         }
       ]
     }

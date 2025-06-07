@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Row, Col, Card, Form, Button, Nav, Tab, Table, Badge, ProgressBar, InputGroup, FormControl, Alert, Pagination } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, Nav, Tab, Table, Badge, ProgressBar, InputGroup, FormControl, Alert, Pagination, ButtonGroup } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainCard from '../../components/Card/MainCard';
 import { medicamentoService } from '../../services/medicamentoService';
@@ -13,7 +13,6 @@ import VerMedicamentoModal from './components/VerMedicamentoModal';
 import VerLoteModal from './components/VerLoteModal';
 import CategoriasYPresentacionesModal from './components/CategoriasYPresentacionesModal';
 import ProveedoresModal from './components/ProveedoresModal';
-import AjustarStockModal from './components/AjustarStockModal';
 
 // Estilos personalizados para la paginación
 const customStyles = `
@@ -26,6 +25,14 @@ const customStyles = `
   
   .pagination-info {
     color: #6c757d;
+  }
+  
+  .filter-controls {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
   }
 `;
 
@@ -46,9 +53,15 @@ const InventarioMedicamentos = () => {
   // Estado para controlar cuándo se deben recargar los datos
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
-  // Estados para filtrar lotes 
-  const [showLotesAgotados, setShowLotesAgotados] = useState(false);
+  // Estados para filtrar lotes - MEJORADOS
   const [lotesAgotados, setLotesAgotados] = useState([]);
+  const [lotesVencidos, setLotesVencidos] = useState([]);
+  const [filtroEstado, setFiltroEstado] = useState('activos'); // 'activos', 'agotados', 'vencidos', 'todos'
+  const [filtroFecha, setFiltroFecha] = useState({
+    desde: '',
+    hasta: '',
+    tipo: 'caducidad' // 'caducidad', 'fabricacion', 'ingreso'
+  });
 
   // Estados para modales
   const [showMedicamentoModal, setShowMedicamentoModal] = useState(false);
@@ -57,8 +70,6 @@ const InventarioMedicamentos = () => {
   const [showVerLoteModal, setShowVerLoteModal] = useState(false);
   const [showCategoriasModal, setShowCategoriasModal] = useState(false);
   const [showProveedoresModal, setShowProveedoresModal] = useState(false);
-
-  const [showAjustarStockModal, setShowAjustarStockModal] = useState(false);
   
   // Estados para edición
   const [medicamentoSeleccionado, setMedicamentoSeleccionado] = useState(null);
@@ -124,6 +135,21 @@ const InventarioMedicamentos = () => {
     }
   }, [location]);
 
+  // Función para cargar lotes vencidos
+  const cargarLotesVencidos = async () => {
+    try {
+      const response = await stockService.listarLotesVencidos();
+      if (response && response.data) {
+        setLotesVencidos(response.data);
+      } else {
+        setLotesVencidos([]);
+      }
+    } catch (error) {
+      console.error("Error al cargar lotes vencidos:", error);
+      setLotesVencidos([]);
+    }
+  };
+
   // Cargar datos iniciales
   useEffect(() => {
     const fetchData = async () => {
@@ -187,6 +213,9 @@ const InventarioMedicamentos = () => {
           setLotesAgotados([]);
         }
 
+        // Cargar lotes vencidos
+        await cargarLotesVencidos();
+
         // Cargar notificaciones
         const notificacionesResponse = await notificacionesService.obtenerNotificaciones();
         if (notificacionesResponse && notificacionesResponse.data) {
@@ -210,25 +239,33 @@ const InventarioMedicamentos = () => {
     };
 
     fetchData();
-  }, [shouldRefresh]); // Ahora este efecto se ejecutará cuando shouldRefresh cambie
+  }, [shouldRefresh]);
 
-  // Función para recargar datos después de ajustar stock
-  const handleStockAjustado = async () => {
-    setShouldRefresh(true);
+  // Función para aplicar filtros de fecha
+  const aplicarFiltroFecha = (lote) => {
+    if (!filtroFecha.desde && !filtroFecha.hasta) return true;
 
-    // Si había un lote seleccionado, actualizar su información
-    if (loteSeleccionado) {
-      const updatedLoteResponse = await stockService.obtenerStockPorId(loteSeleccionado.id_stock);
-      if (updatedLoteResponse && updatedLoteResponse.data) {
-        setLoteSeleccionado(updatedLoteResponse.data);
-      }
+    let fechaComparar;
+    switch (filtroFecha.tipo) {
+      case 'fabricacion':
+        fechaComparar = new Date(lote.fecha_fabricacion);
+        break;
+      case 'ingreso':
+        fechaComparar = new Date(lote.fecha_ingreso);
+        break;
+      case 'caducidad':
+      default:
+        fechaComparar = new Date(lote.fecha_caducidad);
+        break;
     }
-  };
 
-  // Función para manejar el ajuste de stock
-  const handleAjustarStock = (lote) => {
-    setLoteSeleccionado(lote);
-    setShowAjustarStockModal(true);
+    const fechaDesde = filtroFecha.desde ? new Date(filtroFecha.desde) : null;
+    const fechaHasta = filtroFecha.hasta ? new Date(filtroFecha.hasta) : null;
+
+    if (fechaDesde && fechaComparar < fechaDesde) return false;
+    if (fechaHasta && fechaComparar > fechaHasta) return false;
+
+    return true;
   };
 
   // Lógica para filtrar medicamentos en todas las pestañas usando searchTerm global
@@ -263,22 +300,41 @@ const InventarioMedicamentos = () => {
     );
   }, [proximosVencer, searchTerm]);
 
-  // Lógica para filtrar lotes usando searchTerm global
+  // Lógica para filtrar lotes usando searchTerm global y filtros mejorados
   const filteredLotes = useMemo(() => {
-    let lotesData = [...lotes];
+    let lotesData = [];
 
-    // Agregar lotes agotados si se solicita
-    if (showLotesAgotados) {
-      lotesData = [...lotesData, ...lotesAgotados];
+    // Seleccionar los lotes según el filtro de estado
+    switch (filtroEstado) {
+      case 'activos':
+        lotesData = [...lotes];
+        break;
+      case 'agotados':
+        lotesData = [...lotesAgotados];
+        break;
+      case 'vencidos':
+        lotesData = [...lotesVencidos];
+        break;
+      case 'todos':
+        lotesData = [...lotes, ...lotesAgotados, ...lotesVencidos];
+        break;
+      default:
+        lotesData = [...lotes];
     }
 
-    return lotesData.filter(lote =>
+    // Aplicar filtro de búsqueda
+    lotesData = lotesData.filter(lote =>
       (lote.numero_lote && lote.numero_lote.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (lote.nombre && lote.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (lote.id_stock && lote.id_stock.toString().includes(searchTerm.toLowerCase())) ||
       (lote.codigo && lote.codigo.toString().includes(searchTerm.toLowerCase()))
     );
-  }, [lotes, lotesAgotados, showLotesAgotados, searchTerm]);
+
+    // Aplicar filtro de fecha
+    lotesData = lotesData.filter(aplicarFiltroFecha);
+
+    return lotesData;
+  }, [lotes, lotesAgotados, lotesVencidos, filtroEstado, searchTerm, filtroFecha]);
 
   // Función para calcular paginación
   const getPaginatedData = (data, paginationState) => {
@@ -398,13 +454,13 @@ const InventarioMedicamentos = () => {
     );
   };
 
-  // Efecto para resetear paginación cuando cambia el término de búsqueda
+  // Efecto para resetear paginación cuando cambia el término de búsqueda o filtros
   useEffect(() => {
     setPagGeneral(prev => ({ ...prev, current: 1 }));
     setPagStockBajo(prev => ({ ...prev, current: 1 }));
     setPagVencimiento(prev => ({ ...prev, current: 1 }));
     setPagLotes(prev => ({ ...prev, current: 1 }));
-  }, [searchTerm]);
+  }, [searchTerm, filtroEstado, filtroFecha]);
 
   // Obtener datos paginados para cada pestaña
   const paginatedGeneral = getPaginatedData(filteredMedicamentosGeneral, pagGeneral);
@@ -533,6 +589,15 @@ const InventarioMedicamentos = () => {
         alert("Error al cambiar el estado del lote");
       }
     }
+  };
+
+  // Función para limpiar filtros de fecha
+  const limpiarFiltros = () => {
+    setFiltroFecha({
+      desde: '',
+      hasta: '',
+      tipo: 'caducidad'
+    });
   };
 
   // Mostrar indicador de carga
@@ -988,22 +1053,101 @@ const InventarioMedicamentos = () => {
                 </Card>
               </Tab.Pane>
 
-              {/* Pestaña: Lotes */}
+              {/* Pestaña: Lotes - MEJORADA */}
               <Tab.Pane eventKey="lotes">
                 <Card>
                   <Card.Body>
-                    <Row className="mb-3">
-                      <Col md={12} className="text-end">
-                        <Button
-                          variant="outline-secondary"
-                          className="me-2"
-                          onClick={() => setShowLotesAgotados(!showLotesAgotados)}
-                        >
-                          <i className="fas fa-box me-1"></i>
-                          {showLotesAgotados ? "Ocultar lotes agotados" : "Mostrar lotes agotados"}
-                        </Button>
-                      </Col>
-                    </Row>
+                    {/* Controles de filtro mejorados */}
+                    <div className="filter-controls">
+                      <Row>
+                        <Col md={4}>
+                          <Form.Group>
+                            <Form.Label>Filtrar por estado:</Form.Label>
+                            <ButtonGroup className="w-100">
+                              <Button
+                                variant={filtroEstado === 'activos' ? 'primary' : 'outline-primary'}
+                                onClick={() => setFiltroEstado('activos')}
+                                size="sm"
+                              >
+                                <i className="fas fa-check-circle me-1"></i>
+                                Activos ({lotes.length})
+                              </Button>
+                              <Button
+                                variant={filtroEstado === 'agotados' ? 'secondary' : 'outline-secondary'}
+                                onClick={() => setFiltroEstado('agotados')}
+                                size="sm"
+                              >
+                                <i className="fas fa-box-open me-1"></i>
+                                Agotados ({lotesAgotados.length})
+                              </Button>
+                              <Button
+                                variant={filtroEstado === 'vencidos' ? 'danger' : 'outline-danger'}
+                                onClick={() => setFiltroEstado('vencidos')}
+                                size="sm"
+                              >
+                                <i className="fas fa-exclamation-triangle me-1"></i>
+                                Vencidos ({lotesVencidos.length})
+                              </Button>
+                              <Button
+                                variant={filtroEstado === 'todos' ? 'dark' : 'outline-dark'}
+                                onClick={() => setFiltroEstado('todos')}
+                                size="sm"
+                              >
+                                <i className="fas fa-list me-1"></i>
+                                Todos
+                              </Button>
+                            </ButtonGroup>
+                          </Form.Group>
+                        </Col>
+                        <Col md={8}>
+                          <Form.Group>
+                            <Form.Label>Filtrar por fechas:</Form.Label>
+                            <Row>
+                              <Col md={3}>
+                                <Form.Select
+                                  size="sm"
+                                  value={filtroFecha.tipo}
+                                  onChange={(e) => setFiltroFecha(prev => ({ ...prev, tipo: e.target.value }))}
+                                >
+                                  <option value="caducidad">Fecha de caducidad</option>
+                                  <option value="fabricacion">Fecha de fabricación</option>
+                                  <option value="ingreso">Fecha de ingreso</option>
+                                </Form.Select>
+                              </Col>
+                              <Col md={3}>
+                                <Form.Control
+                                  type="date"
+                                  size="sm"
+                                  placeholder="Desde"
+                                  value={filtroFecha.desde}
+                                  onChange={(e) => setFiltroFecha(prev => ({ ...prev, desde: e.target.value }))}
+                                />
+                              </Col>
+                              <Col md={3}>
+                                <Form.Control
+                                  type="date"
+                                  size="sm"
+                                  placeholder="Hasta"
+                                  value={filtroFecha.hasta}
+                                  onChange={(e) => setFiltroFecha(prev => ({ ...prev, hasta: e.target.value }))}
+                                />
+                              </Col>
+                              <Col md={3}>
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
+                                  onClick={limpiarFiltros}
+                                  className="w-100"
+                                >
+                                  <i className="fas fa-times me-1"></i>
+                                  Limpiar
+                                </Button>
+                              </Col>
+                            </Row>
+                          </Form.Group>
+                        </Col>
+                      </Row>
+                    </div>
 
                     <div className="table-responsive">
                       <Table hover>
@@ -1078,20 +1222,10 @@ const InventarioMedicamentos = () => {
                                     <Button
                                       variant="outline-primary"
                                       size="sm"
-                                      className="me-1"
                                       onClick={() => handleVerLote(lote.id_stock)}
                                     >
                                       <i className="fas fa-eye"></i>
                                     </Button>
-                                    {lote.estado === 'activo' && (
-                                      <Button
-                                        variant="outline-secondary"
-                                        size="sm"
-                                        onClick={() => handleAjustarStock(lote)}
-                                      >
-                                        <i className="fas fa-edit"></i>
-                                      </Button>
-                                    )}
                                   </td>
                                 </tr>
                               );
@@ -1099,8 +1233,8 @@ const InventarioMedicamentos = () => {
                           ) : (
                             <tr>
                               <td colSpan="11" className="text-center">
-                                {searchTerm ? 
-                                  `No se encontraron lotes que coincidan con "${searchTerm}"` :
+                                {searchTerm || filtroFecha.desde || filtroFecha.hasta ? 
+                                  `No se encontraron lotes que coincidan con los filtros aplicados` :
                                   "No se encontraron lotes"
                                 }
                               </td>
@@ -1178,22 +1312,6 @@ const InventarioMedicamentos = () => {
               handleDesactivarLote(id, estado);
             }, 500);
           }}
-          onAjustarStock={(lote) => {
-            setShowVerLoteModal(false);
-            setTimeout(() => {
-              handleAjustarStock(lote);
-            }, 500);
-          }}
-        />
-      )}
-
-      {/* Nuevo modal para ajustar stock */}
-      {loteSeleccionado && (
-        <AjustarStockModal
-          show={showAjustarStockModal}
-          onHide={() => setShowAjustarStockModal(false)}
-          lote={loteSeleccionado}
-          onSuccess={handleStockAjustado}
         />
       )}
 
@@ -1263,6 +1381,7 @@ const InventarioMedicamentos = () => {
           }
         }}
       />
+    
       <ProveedoresModal
         show={showProveedoresModal}
         onHide={() => setShowProveedoresModal(false)}

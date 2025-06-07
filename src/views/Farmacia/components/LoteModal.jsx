@@ -313,7 +313,7 @@ const LoteModal = ({ show, onHide, medicamentos = [], medicamentoPreseleccionado
           <Row className="mb-3">
             <Col md={6}>
               <Form.Group controlId="loteCantidad">
-                <Form.Label>Cantidad Inicial <span className="text-danger">*</span></Form.Label>
+                <Form.Label>Cantidad<span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="number"
                   name="cantidad_disponible"
