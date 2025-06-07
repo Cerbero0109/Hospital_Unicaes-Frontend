@@ -111,7 +111,7 @@ const LaboratoristasDashboard = () => {
                 <thead>
                   <tr>
                     <th>Paciente</th>
-                    <th>Documento</th>
+                    <th>Expediente</th>
                     <th>Teléfono</th>
                     <th>Examen</th>
                     <th>Estado</th>
@@ -122,7 +122,7 @@ const LaboratoristasDashboard = () => {
                     ultimosExamenes.map((examen) => (
                       <tr key={examen.id_examen}>
                         <td>{`${examen.nombre_paciente} ${examen.apellido_paciente}`}</td>
-                        <td>{examen.dui_paciente}</td>
+                        <td>{examen.n_expediente}</td>
                         <td>{examen.telefono_paciente}</td>
                         <td>{examen.nombre_examen}</td>
                         <td>{examen.estado}</td>

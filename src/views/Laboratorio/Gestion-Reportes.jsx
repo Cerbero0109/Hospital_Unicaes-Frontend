@@ -44,7 +44,28 @@ const GestionReportes = () => {
     { name: 'Paciente', selector: row => `${row.nombre_paciente} ${row.apellido_paciente}`, sortable: true },
     { name: 'Tipo de Examen', selector: row => row.examen_nombre, sortable: true },
     { name: 'Doctor Responsable', selector: row => `${row.doctor_nombre} ${row.doctor_apellido}`, sortable: true },
-    { name: 'Fecha de Solicitud', selector: row => new Date(row.fecha_solicitud).toLocaleDateString('es-ES'), sortable: true },
+    {
+      name: 'Fecha de Procesamiento',
+      selector: row => {
+        const fecha = new Date(row.fecha_solicitud);
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const anio = fecha.getFullYear();
+        return `${dia}/${mes}/${anio}`;
+      },
+      sortable: true
+    },
+    {
+      name: 'Hora de Procesamiento',
+      selector: row => {
+        const fecha = new Date(row.fecha_solicitud);
+        const horas = String(fecha.getHours()).padStart(2, '0');
+        const minutos = String(fecha.getMinutes()).padStart(2, '0');
+        return `${horas}:${minutos}`;
+      },
+      sortable: true
+    }
+    ,
     {
       name: 'Ver Resultados',
       cell: row => (
@@ -60,7 +81,7 @@ const GestionReportes = () => {
           paciente: `${row.nombre_paciente} ${row.apellido_paciente}`,
           muestra: row.nombre_muestra,
           numeroExamen: row.id_examen,
-          fechaEmision: new Date(row.fecha_solicitud).toLocaleDateString('es-ES'),
+          fechaProceso: new Date(row.fecha_solicitud).toLocaleDateString('es-ES'),
           examen: row.examen_nombre,
           parametros: resultados, 
           });
@@ -91,6 +112,7 @@ const GestionReportes = () => {
         try {
         const resultados = await mostrarResultadosExamenService.getResultadosExamen(row.id_examen);
         const doc = new jsPDF();
+        const fecha = new Date(row.fecha_solicitud);
         
         // Encabezado
         // El logo
@@ -104,8 +126,10 @@ const GestionReportes = () => {
         doc.setFontSize(12);
         doc.text(`Paciente:${row.nombre_paciente} ${row.apellido_paciente} `, 20, 40);
         doc.text(`Examen: ${row.examen_nombre}`, 20, 50);
-        doc.text(`Fecha: ${new Date(row.fecha_solicitud).toLocaleDateString('es-ES')}`, 20, 60);
-        doc.text(`Doctor: ${row.doctor_nombre} ${row.doctor_apellido}`, 20, 70);
+        doc.text(`Fecha de Procesamiento: ${fecha.toLocaleDateString('es-ES')}`, 20, 60);
+        doc.text(`Hora de Procesamiento: ${fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })}`, 20, 70);
+        doc.text(`Doctor: ${row.doctor_nombre} ${row.doctor_apellido}`, 20, 80);
+
         
         // Tabla de resultados
         let yPos = 90;
@@ -197,7 +221,7 @@ const GestionReportes = () => {
     <div style={{ maxHeight: '80vh', overflowY: 'auto' }}>
       <p><strong>Paciente:</strong> {selectedResultado.paciente}</p>
       <p><strong>Muestra:</strong> {selectedResultado.muestra}</p>
-      <p><strong>Fecha de Emisión:</strong> {selectedResultado.fechaEmision}</p>
+      <p><strong>Fecha de Procesamiento:</strong> {selectedResultado.fechaProceso}</p>
       <p><strong>Examen:</strong> {selectedResultado.examen}</p>
 
       <div className="table-responsive">

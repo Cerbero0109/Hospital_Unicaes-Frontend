@@ -60,7 +60,7 @@ const PacientesHistorial = () => {
 
   const columns = [
     { name: 'Nombre', selector: row => `${row.nombre_paciente} ${row.apellido_paciente}`, sortable: true },
-    { name: 'DUI', selector: row => row.dui_paciente, sortable: true },
+    { name: 'Expediente', selector: row => row.n_expediente, sortable: true },
     { name: 'Sexo', selector: row => row.sexo_paciente, sortable: true },
     { name: 'Teléfono', selector: row => row.telefono_paciente, sortable: true },
     { name: 'Ultima Solicitud', selector: row => new Date(row.ultima_fecha_solicitud).toLocaleDateString('es-ES'), sortable: true },
