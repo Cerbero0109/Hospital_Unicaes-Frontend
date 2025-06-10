@@ -56,6 +56,7 @@ const Examenes = () => {
         { name: 'Nombre de Muestra', selector: row => `${row.nombre_muestra}`, sortable: true },
         { name: 'Examen', selector: row => row.examen_nombre, sortable: true },
         { name: 'Nombre del Paciente', selector: row => `${row.nombre_paciente} ${row.apellido_paciente}`, sortable: true },
+        { name: 'N° de expediente', selector: row => `${row.n_expediente}`,sortable: true},
         { name: 'Doctor Responsable', selector: row => `${row.doctor_nombre} ${row.doctor_apellido}`, sortable: true },
         { name: 'Fecha de Solicitud', selector: row => new Date(row.fecha_solicitud).toLocaleDateString('es-ES'), sortable: true },
         {
@@ -95,7 +96,7 @@ const Examenes = () => {
     ];
 
     const filteredExamenes = examenes.filter(examen =>
-        `${examen.nombre_paciente} ${examen.apellido_paciente} ${examen.examen_nombre}`.toLowerCase().includes(searchTerm.toLowerCase())
+        `${examen.nombre_paciente} ${examen.apellido_paciente} ${examen.examen_nombre} ${examen.n_expediente}`.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (loading) return <p>Cargando exámenes pendientes...</p>;
