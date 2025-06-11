@@ -197,3 +197,85 @@ export const contarPacientesConExamenService = {
         }
     },
 };
+
+// ========== SERVICIOS PARA TIPOS DE EXAMEN ==========
+
+export const tiposExamenService = {
+    // Listar todos los tipos de examen
+    listarTiposExamen: async () => {
+        try {
+            const response = await axios.get(`${baseUrl}/tipos-examen`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al listar tipos de examen:', error);
+            throw error;
+        }
+    },
+
+    // Obtener tipo de examen por ID
+    obtenerTipoExamenPorId: async (id_tipo_examen) => {
+        try {
+            const response = await axios.get(`${baseUrl}/tipos-examen/${id_tipo_examen}`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al obtener tipo de examen:', error);
+            throw error;
+        }
+    },
+
+    // Crear nuevo tipo de examen
+    crearTipoExamen: async (nuevoTipoExamen) => {
+        try {
+            const response = await axios.post(`${baseUrl}/tipos-examen`, nuevoTipoExamen, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al crear tipo de examen:', error);
+            throw error;
+        }
+    },
+
+    // Actualizar tipo de examen
+    actualizarTipoExamen: async (id_tipo_examen, tipoExamenActualizado) => {
+        try {
+            const response = await axios.put(`${baseUrl}/tipos-examen/${id_tipo_examen}`, tipoExamenActualizado, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al actualizar tipo de examen:', error);
+            throw error;
+        }
+    },
+
+    // Eliminar tipo de examen
+    eliminarTipoExamen: async (id_tipo_examen) => {
+        try {
+            const response = await axios.delete(`${baseUrl}/tipos-examen/${id_tipo_examen}`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al eliminar tipo de examen:', error);
+            throw error;
+        }
+    },
+
+    // Contar plantillas por tipo
+    contarPlantillasPorTipo: async (id_tipo_examen) => {
+        try {
+            const response = await axios.get(`${baseUrl}/tipos-examen/${id_tipo_examen}/plantillas-count`, {
+                withCredentials: true
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al contar plantillas:', error);
+            throw error;
+        }
+    }
+};

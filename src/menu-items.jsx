@@ -119,6 +119,16 @@ const menuItems = {
           icon: 'fas fa-vial ',
           roles: ['Laboratorista'] // Solo el rol Laboratorista puede ver esta opción
         },
+                //NUEVA OPCIÓN - GESTIÓN DE PLANTILLAS
+        {
+          id: 'v_plantillas_examen',
+          title: 'Gestión de Plantillas',
+          type: 'item',
+          url: '/GestionTipoExamenes-plantillas',
+          classes: 'nav-item',
+          icon: 'fas fa-file-medical',
+          roles: ['Laboratorista'] // Solo el rol Laboratorista puede ver esta opción
+        },
         {
           id: 'v_reportes',
           title: 'Gestion Reportes',
@@ -134,16 +144,16 @@ const menuItems = {
           id: 'v_inventario_medicamentos',
           title: 'Inventario',
           type: 'item',
-          url: '/inventario-medicamentos', 
+          url: '/inventario-medicamentos',
           classes: 'nav-item',
           icon: 'feather icon-package',
           roles: ['Jefe de Farmacia'] // Solo el rol Jefe de Farmacia puede ver esta opción
         },
         {
-          id: 'v_despacho',  
+          id: 'v_despacho',
           title: 'Despacho',
           type: 'item',
-          url: '/despacho-medicamentos',  
+          url: '/despacho-medicamentos',
           classes: 'nav-item',
           icon: 'fas fa-capsules',
           roles: ['Jefe de Farmacia', 'Despachador de Medicamentos'] // Solo el rol Jefe de Farmacia y Despachador de Medicamentos pueden ver esta opción
