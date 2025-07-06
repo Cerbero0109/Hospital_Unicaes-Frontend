@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Tab, Nav, Table, Badge, Form, InputGroup, Row, Col } from 'react-bootstrap';
+import { Modal, Button, Tab, Nav, Table, Badge, Form, InputGroup, Row, Col, Alert } from 'react-bootstrap';
 import CategoriaModal from './CategoriaModal';
 import PresentacionModal from './PresentacionModal';
+import { categoriaService } from '../../../services/categoriaService';
+import { presentacionService } from '../../../services/presentacionService';
 
-// Estilos personalizados para el modal más ancho
+// Estilos personalizados 
 const customStyles = `
   .modal-extra-wide .modal-xl {
     max-width: 95%;
@@ -35,18 +37,15 @@ const customStyles = `
   }
 `;
 
-const CategoriasYPresentacionesModal = ({ 
-  show, 
-  onHide, 
-  categorias, 
-  presentaciones,
-  onAddCategoria,
-  onUpdateCategoria,
-  onDeleteCategoria,
-  onAddPresentacion,
-  onUpdatePresentacion,
-  onDeletePresentacion
-}) => {
+const CategoriasYPresentacionesModal = ({ show, onHide }) => {
+  // Estados internos para categorías y presentaciones
+  const [categorias, setCategorias] = useState([]);
+  const [presentaciones, setPresentaciones] = useState([]);
+  const [loadingCategorias, setLoadingCategorias] = useState(true);
+  const [loadingPresentaciones, setLoadingPresentaciones] = useState(true);
+  const [errorCategorias, setErrorCategorias] = useState(null);
+  const [errorPresentaciones, setErrorPresentaciones] = useState(null);
+
   // Agregar estilos personalizados al documento
   useEffect(() => {
     // Crear elemento de estilo
@@ -60,6 +59,14 @@ const CategoriasYPresentacionesModal = ({
     };
   }, []);
 
+  // Cargar datos al montar el componente o mostrar el modal
+  useEffect(() => {
+    if (show) {
+      fetchCategorias();
+      fetchPresentaciones();
+    }
+  }, [show]);
+
   // Estado para modales de edición
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [showPresentacionModal, setShowPresentacionModal] = useState(false);
@@ -69,12 +76,39 @@ const CategoriasYPresentacionesModal = ({
   // Estados para filtrado y paginación
   const [searchCategorias, setSearchCategorias] = useState('');
   const [searchPresentaciones, setSearchPresentaciones] = useState('');
-  const [filtroCategorias, setFiltroCategorias] = useState('todos');
-  const [filtroPresentaciones, setFiltroPresentaciones] = useState('todos');
   const [currentPageCategorias, setCurrentPageCategorias] = useState(1);
   const [currentPagePresentaciones, setCurrentPagePresentaciones] = useState(1);
   const [itemsPerPageCategorias, setItemsPerPageCategorias] = useState(10);
   const [itemsPerPagePresentaciones, setItemsPerPagePresentaciones] = useState(10);
+
+  // Funciones para cargar datos
+  const fetchCategorias = async () => {
+    try {
+      setLoadingCategorias(true);
+      setErrorCategorias(null);
+      const response = await categoriaService.listarCategorias();
+      setCategorias(response && response.data ? response.data : []);
+    } catch (error) {
+      console.error("Error al cargar categorías:", error);
+      setErrorCategorias("Error al cargar la lista de categorías. Por favor, intente nuevamente.");
+    } finally {
+      setLoadingCategorias(false);
+    }
+  };
+
+  const fetchPresentaciones = async () => {
+    try {
+      setLoadingPresentaciones(true);
+      setErrorPresentaciones(null);
+      const response = await presentacionService.listarPresentaciones();
+      setPresentaciones(response && response.data ? response.data : []);
+    } catch (error) {
+      console.error("Error al cargar presentaciones:", error);
+      setErrorPresentaciones("Error al cargar la lista de presentaciones. Por favor, intente nuevamente.");
+    } finally {
+      setLoadingPresentaciones(false);
+    }
+  };
 
   // Manejadores para modales de categoría
   const handleShowNewCategoria = () => {
@@ -87,13 +121,35 @@ const CategoriasYPresentacionesModal = ({
     setShowCategoriaModal(true);
   };
 
-  const handleGuardarCategoria = (categoriaData) => {
-    if (categoriaSeleccionada) {
-      onUpdateCategoria(categoriaSeleccionada.id_categoria, categoriaData);
-    } else {
-      onAddCategoria(categoriaData);
+  const handleGuardarCategoria = async (categoriaData) => {
+    try {
+      if (categoriaSeleccionada) {
+        // Actualizar categoría existente
+        await categoriaService.actualizarCategoria(categoriaSeleccionada.id_categoria, categoriaData);
+      } else {
+        // Crear nueva categoría
+        await categoriaService.crearCategoria(categoriaData);
+      }
+      
+      // Cerrar modal y recargar la lista
+      setShowCategoriaModal(false);
+      fetchCategorias();
+    } catch (error) {
+      console.error("Error al guardar categoría:", error);
+      alert(error.response?.data?.message || "Error al guardar la categoría");
     }
-    setShowCategoriaModal(false);
+  };
+
+  const handleDesactivarCategoria = async (id) => {
+    if (window.confirm("¿Está seguro que desea desactivar esta categoría?")) {
+      try {
+        await categoriaService.desactivarCategoria(id);
+        fetchCategorias();
+      } catch (error) {
+        console.error("Error al desactivar categoría:", error);
+        alert("Error al desactivar la categoría");
+      }
+    }
   };
 
   // Manejadores para modales de presentación
@@ -107,16 +163,38 @@ const CategoriasYPresentacionesModal = ({
     setShowPresentacionModal(true);
   };
 
-  const handleGuardarPresentacion = (presentacionData) => {
-    if (presentacionSeleccionada) {
-      onUpdatePresentacion(presentacionSeleccionada.id_presentacion, presentacionData);
-    } else {
-      onAddPresentacion(presentacionData);
+  const handleGuardarPresentacion = async (presentacionData) => {
+    try {
+      if (presentacionSeleccionada) {
+        // Actualizar presentación existente
+        await presentacionService.actualizarPresentacion(presentacionSeleccionada.id_presentacion, presentacionData);
+      } else {
+        // Crear nueva presentación
+        await presentacionService.crearPresentacion(presentacionData);
+      }
+      
+      // Cerrar modal y recargar la lista
+      setShowPresentacionModal(false);
+      fetchPresentaciones();
+    } catch (error) {
+      console.error("Error al guardar presentación:", error);
+      alert(error.response?.data?.message || "Error al guardar la presentación");
     }
-    setShowPresentacionModal(false);
+  };
+
+  const handleDesactivarPresentacion = async (id) => {
+    if (window.confirm("¿Está seguro que desea desactivar esta presentación?")) {
+      try {
+        await presentacionService.desactivarPresentacion(id);
+        fetchPresentaciones();
+      } catch (error) {
+        console.error("Error al desactivar presentación:", error);
+        alert("Error al desactivar la presentación");
+      }
+    }
   };
   
-  // Funciones para filtrado
+  // Funciones para filtrado - solo por búsqueda
   const filteredCategorias = categorias.filter(cat => {
     const matchesSearch = (
       String(cat.id_categoria || '').toLowerCase().includes(searchCategorias.toLowerCase()) ||
@@ -124,11 +202,7 @@ const CategoriasYPresentacionesModal = ({
       String(cat.descripcion || '').toLowerCase().includes(searchCategorias.toLowerCase())
     );
     
-    const matchesEstado = 
-      filtroCategorias === 'todos' || 
-      cat.estado === filtroCategorias;
-    
-    return matchesSearch && matchesEstado;
+    return matchesSearch;
   });
   
   const filteredPresentaciones = presentaciones.filter(pres => {
@@ -138,11 +212,7 @@ const CategoriasYPresentacionesModal = ({
       String(pres.descripcion || '').toLowerCase().includes(searchPresentaciones.toLowerCase())
     );
     
-    const matchesEstado = 
-      filtroPresentaciones === 'todos' || 
-      pres.estado === filtroPresentaciones;
-    
-    return matchesSearch && matchesEstado;
+    return matchesSearch;
   });
   
   // Cálculos para paginación de categorías
@@ -274,8 +344,14 @@ const CategoriasYPresentacionesModal = ({
             <Tab.Content>
               {/* Tab Categorías */}
               <Tab.Pane eventKey="categorias">
+                {errorCategorias && (
+                  <Alert variant="danger" className="mb-3">
+                    {errorCategorias}
+                  </Alert>
+                )}
+
                 <Row className="mb-3">
-                  <Col md={5} className="mb-2 mb-md-0">
+                  <Col md={8} className="mb-2 mb-md-0">
                     <InputGroup>
                       <InputGroup.Text><i className="fas fa-search"></i></InputGroup.Text>
                       <Form.Control
@@ -289,19 +365,6 @@ const CategoriasYPresentacionesModal = ({
                       />
                     </InputGroup>
                   </Col>
-                  <Col md={3} className="mb-2 mb-md-0">
-                    <Form.Select
-                      value={filtroCategorias}
-                      onChange={(e) => {
-                        setFiltroCategorias(e.target.value);
-                        setCurrentPageCategorias(1);
-                      }}
-                    >
-                      <option value="todos">Todos los estados</option>
-                      <option value="activo">Activos</option>
-                      <option value="inactivo">Inactivos</option>
-                    </Form.Select>
-                  </Col>
                   <Col md={4} className="text-md-end">
                     <Button 
                       variant="primary" 
@@ -312,69 +375,74 @@ const CategoriasYPresentacionesModal = ({
                   </Col>
                 </Row>
                 
-                <div className="table-container">
-                  <Table hover responsive>
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Nombre Categoría</th>
-                        <th>Descripción</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentCategorias.length > 0 ? (
-                        currentCategorias.map(cat => (
-                          <tr key={cat.id_categoria}>
-                            <td>{cat.id_categoria}</td>
-                            <td>{cat.nombre_categoria}</td>
-                            <td>{cat.descripcion || '-'}</td>
-                            <td>
-                              <Badge bg={cat.estado === 'activo' ? 'success' : 'danger'}>
-                                {cat.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                              </Badge>
-                            </td>
-                            <td>
-                              <Button 
-                                variant="outline-secondary" 
-                                size="sm"
-                                className="me-1"
-                                onClick={() => handleEditCategoria(cat)}
-                              >
-                                <i className="fas fa-edit"></i>
-                              </Button>
-                              {cat.estado === 'activo' && (
+                {loadingCategorias ? (
+                  <div className="text-center my-3">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Cargando...</span>
+                    </div>
+                    <p className="mt-2">Cargando categorías...</p>
+                  </div>
+                ) : (
+                  <div className="table-container">
+                    <Table hover responsive>
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre Categoría</th>
+                          <th>Descripción</th>
+                          <th>Estado</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentCategorias.length > 0 ? (
+                          currentCategorias.map(cat => (
+                            <tr key={cat.id_categoria}>
+                              <td>{cat.id_categoria}</td>
+                              <td>{cat.nombre_categoria}</td>
+                              <td>{cat.descripcion || '-'}</td>
+                              <td>
+                                <Badge bg={cat.estado === 'activo' ? 'success' : 'danger'}>
+                                  {cat.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                                </Badge>
+                              </td>
+                              <td>
                                 <Button 
-                                  variant="outline-danger" 
+                                  variant="outline-secondary" 
                                   size="sm"
-                                  onClick={() => {
-                                    if (window.confirm(`¿Está seguro de desactivar la categoría ${cat.nombre_categoria}?`)) {
-                                      onDeleteCategoria(cat.id_categoria);
-                                    }
-                                  }}
+                                  className="me-1"
+                                  onClick={() => handleEditCategoria(cat)}
                                 >
-                                  <i className="fas fa-trash"></i>
+                                  <i className="fas fa-edit"></i>
                                 </Button>
-                              )}
+                                {cat.estado === 'activo' && (
+                                  <Button 
+                                    variant="outline-danger" 
+                                    size="sm"
+                                    onClick={() => handleDesactivarCategoria(cat.id_categoria)}
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="5" className="text-center">
+                              {searchCategorias
+                                ? 'No se encontraron categorías con los criterios de búsqueda'
+                                : 'No hay categorías disponibles'}
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="5" className="text-center">
-                            {searchCategorias || filtroCategorias !== 'todos'
-                              ? 'No se encontraron categorías con los criterios de búsqueda'
-                              : 'No hay categorías disponibles'}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
+                        )}
+                      </tbody>
+                    </Table>
+                  </div>
+                )}
                 
                 {/* Paginación de categorías */}
-                {filteredCategorias.length > 0 && renderPagination(
+                {!loadingCategorias && categorias.length > 0 && renderPagination(
                   currentPageCategorias,
                   totalPagesCategorias,
                   paginateCategorias,
@@ -388,8 +456,14 @@ const CategoriasYPresentacionesModal = ({
               
               {/* Tab Presentaciones */}
               <Tab.Pane eventKey="presentaciones">
+                {errorPresentaciones && (
+                  <Alert variant="danger" className="mb-3">
+                    {errorPresentaciones}
+                  </Alert>
+                )}
+
                 <Row className="mb-3">
-                  <Col md={5} className="mb-2 mb-md-0">
+                  <Col md={8} className="mb-2 mb-md-0">
                     <InputGroup>
                       <InputGroup.Text><i className="fas fa-search"></i></InputGroup.Text>
                       <Form.Control
@@ -403,19 +477,6 @@ const CategoriasYPresentacionesModal = ({
                       />
                     </InputGroup>
                   </Col>
-                  <Col md={3} className="mb-2 mb-md-0">
-                    <Form.Select
-                      value={filtroPresentaciones}
-                      onChange={(e) => {
-                        setFiltroPresentaciones(e.target.value);
-                        setCurrentPagePresentaciones(1);
-                      }}
-                    >
-                      <option value="todos">Todos los estados</option>
-                      <option value="activo">Activos</option>
-                      <option value="inactivo">Inactivos</option>
-                    </Form.Select>
-                  </Col>
                   <Col md={4} className="text-md-end">
                     <Button 
                       variant="primary" 
@@ -426,69 +487,74 @@ const CategoriasYPresentacionesModal = ({
                   </Col>
                 </Row>
                 
-                <div className="table-container">
-                  <Table hover responsive>
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Nombre Presentación</th>
-                        <th>Descripción</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentPresentaciones.length > 0 ? (
-                        currentPresentaciones.map(pres => (
-                          <tr key={pres.id_presentacion}>
-                            <td>{pres.id_presentacion}</td>
-                            <td>{pres.nombre_presentacion}</td>
-                            <td>{pres.descripcion || '-'}</td>
-                            <td>
-                              <Badge bg={pres.estado === 'activo' ? 'success' : 'danger'}>
-                                {pres.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                              </Badge>
-                            </td>
-                            <td>
-                              <Button 
-                                variant="outline-secondary" 
-                                size="sm"
-                                className="me-1"
-                                onClick={() => handleEditPresentacion(pres)}
-                              >
-                                <i className="fas fa-edit"></i>
-                              </Button>
-                              {pres.estado === 'activo' && (
+                {loadingPresentaciones ? (
+                  <div className="text-center my-3">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Cargando...</span>
+                    </div>
+                    <p className="mt-2">Cargando presentaciones...</p>
+                  </div>
+                ) : (
+                  <div className="table-container">
+                    <Table hover responsive>
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre Presentación</th>
+                          <th>Descripción</th>
+                          <th>Estado</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPresentaciones.length > 0 ? (
+                          currentPresentaciones.map(pres => (
+                            <tr key={pres.id_presentacion}>
+                              <td>{pres.id_presentacion}</td>
+                              <td>{pres.nombre_presentacion}</td>
+                              <td>{pres.descripcion || '-'}</td>
+                              <td>
+                                <Badge bg={pres.estado === 'activo' ? 'success' : 'danger'}>
+                                  {pres.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                                </Badge>
+                              </td>
+                              <td>
                                 <Button 
-                                  variant="outline-danger" 
+                                  variant="outline-secondary" 
                                   size="sm"
-                                  onClick={() => {
-                                    if (window.confirm(`¿Está seguro de desactivar la presentación ${pres.nombre_presentacion}?`)) {
-                                      onDeletePresentacion(pres.id_presentacion);
-                                    }
-                                  }}
+                                  className="me-1"
+                                  onClick={() => handleEditPresentacion(pres)}
                                 >
-                                  <i className="fas fa-trash"></i>
+                                  <i className="fas fa-edit"></i>
                                 </Button>
-                              )}
+                                {pres.estado === 'activo' && (
+                                  <Button 
+                                    variant="outline-danger" 
+                                    size="sm"
+                                    onClick={() => handleDesactivarPresentacion(pres.id_presentacion)}
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="5" className="text-center">
+                              {searchPresentaciones
+                                ? 'No se encontraron presentaciones con los criterios de búsqueda'
+                                : 'No hay presentaciones disponibles'}
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="5" className="text-center">
-                            {searchPresentaciones || filtroPresentaciones !== 'todos'
-                              ? 'No se encontraron presentaciones con los criterios de búsqueda'
-                              : 'No hay presentaciones disponibles'}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
+                        )}
+                      </tbody>
+                    </Table>
+                  </div>
+                )}
                 
                 {/* Paginación de presentaciones */}
-                {filteredPresentaciones.length > 0 && renderPagination(
+                {!loadingPresentaciones && presentaciones.length > 0 && renderPagination(
                   currentPagePresentaciones,
                   totalPagesPresentaciones,
                   paginatePresentaciones,

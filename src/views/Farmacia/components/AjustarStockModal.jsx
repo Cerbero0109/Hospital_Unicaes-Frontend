@@ -1,4 +1,4 @@
-// AjustarStockModal.jsx
+// AjustarStockModal.jsx solo se utilozo para prueba, de momento no se usa
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Row, Col, Alert } from 'react-bootstrap';
 import { stockService } from '../../../services/stockService';

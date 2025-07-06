@@ -1,4 +1,3 @@
-//npm install jquery datatables.net datatables.net-bs5 datatables.net-responsive-bs5
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Row, Col, Card, Table, Badge, Spinner, Form, InputGroup } from 'react-bootstrap';
 import { inventarioMovimientosService } from '../../../services/inventarioMovimientosService';

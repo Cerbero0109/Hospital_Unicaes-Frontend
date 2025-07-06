@@ -46,7 +46,6 @@ const ProveedoresModal = ({ show, onHide }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [filtroEstado, setFiltroEstado] = useState('todos');
 
   // Agregar estilos personalizados al documento
   useEffect(() => {
@@ -123,7 +122,7 @@ const ProveedoresModal = ({ show, onHide }) => {
     }
   };
 
-  // Filtrar proveedores
+  // Filtrar proveedores solo por búsqueda
   const filteredProveedores = proveedores.filter(prov => {
     const matchesSearch = (
       String(prov.id_proveedor || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,12 +132,7 @@ const ProveedoresModal = ({ show, onHide }) => {
       String(prov.correo || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
     
-    // Aplicar filtro por estado
-    const matchesEstado = 
-      filtroEstado === 'todos' || 
-      prov.estado === filtroEstado;
-    
-    return matchesSearch && matchesEstado;
+    return matchesSearch;
   });
   
   // Calcular índices para paginación
@@ -260,7 +254,7 @@ const ProveedoresModal = ({ show, onHide }) => {
           )}
 
           <Row className="mb-3">
-            <Col md={6} className="mb-2 mb-md-0">
+            <Col md={9} className="mb-2 mb-md-0">
               <InputGroup>
                 <InputGroup.Text><i className="fas fa-search"></i></InputGroup.Text>
                 <Form.Control
@@ -273,19 +267,6 @@ const ProveedoresModal = ({ show, onHide }) => {
                   }}
                 />
               </InputGroup>
-            </Col>
-            <Col md={3} className="mb-2 mb-md-0">
-              <Form.Select
-                value={filtroEstado}
-                onChange={(e) => {
-                  setFiltroEstado(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="todos">Todos los estados</option>
-                <option value="activo">Activos</option>
-                <option value="inactivo">Inactivos</option>
-              </Form.Select>
             </Col>
             <Col md={3} className="text-md-end">
               <Button variant="primary" onClick={handleNuevoProveedor}>
@@ -353,7 +334,7 @@ const ProveedoresModal = ({ show, onHide }) => {
                   ) : (
                     <tr>
                       <td colSpan="7" className="text-center">
-                        {searchTerm || filtroEstado !== 'todos' 
+                        {searchTerm 
                           ? 'No se encontraron proveedores con los criterios de búsqueda' 
                           : 'No hay proveedores registrados'}
                       </td>

@@ -128,7 +128,7 @@ const routes = [
         guard: AuthGuard,
         element: lazy(() => import('./views/Laboratorio/Gestion-Reportes'))
       },
-      // ✨ NUEVA RUTA - GESTIÓN DE PLANTILLAS
+      //  GESTIÓN DE PLANTILLAS
       {
         path: '/GestionTipoExamenes-plantillas',
         exact: true,
@@ -138,7 +138,7 @@ const routes = [
       },
 
       {
-        // Ruta para inventario de medicamentos de Farmacia
+        // Ruta para Farmacia
         path: '/inventario-medicamentos',
         exact: true,
         guard: AuthGuard,

@@ -53,7 +53,7 @@ const InventarioMedicamentos = () => {
   // Estado para controlar cuándo se deben recargar los datos
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
-  // Estados para filtrar lotes - MEJORADOS
+  // Estados para filtrar lotes 
   const [lotesAgotados, setLotesAgotados] = useState([]);
   const [lotesVencidos, setLotesVencidos] = useState([]);
   const [filtroEstado, setFiltroEstado] = useState('activos'); // 'activos', 'agotados', 'vencidos', 'todos'

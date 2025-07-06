@@ -137,35 +137,6 @@ const PresentacionModal = ({ show, onHide, presentacion, onGuardar }) => {
               onChange={handleChange}
             />
           </Form.Group>
-          
-          {presentacion && (
-            <Form.Group className="mb-3">
-              <Form.Label>Estado</Form.Label>
-              <div>
-                <Form.Check
-                  type="radio"
-                  label="Activo"
-                  name="estado"
-                  id="estadoActivo"
-                  value="activo"
-                  checked={formData.estado === 'activo'}
-                  onChange={handleChange}
-                  inline
-                />
-                <Form.Check
-                  type="radio"
-                  label="Inactivo"
-                  name="estado"
-                  id="estadoInactivo"
-                  value="inactivo"
-                  checked={formData.estado === 'inactivo'}
-                  onChange={handleChange}
-                  inline
-                />
-              </div>
-            </Form.Group>
-          )}
-          
           <div className="text-muted mb-3">
             <small>Los campos marcados con <span className="text-danger">*</span> son obligatorios</small>
           </div>
